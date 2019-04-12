@@ -21,7 +21,7 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
     private RecyclerView msgRecyclerView;
     private MsgAdapter adapter;
     private List<Msg> msgList = new ArrayList<>();
-    //note
+    //my notes
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);

@@ -2,8 +2,6 @@
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent"
     android:layout_height="wrap_content" android:padding="10dp">
 
-
-
     <LinearLayout
         android:id="@+id/left_msg_layout"
         android:orientation="horizontal"
@@ -25,7 +23,7 @@
             android:layout_height="wrap_content"
             android:layout_gravity="center"
             android:layout_margin="5dp"
-            android:background="@drawable/message_universal"
+            android:background="@drawable/msg_left"
             android:textSize="18sp" />
     </LinearLayout>
 
@@ -43,7 +41,7 @@
             android:layout_height="wrap_content"
             android:layout_gravity="center_vertical"
             android:layout_margin="5dp"
-            android:background="@drawable/message_universal"
+            android:background="@drawable/msg_right"
             android:textSize="18sp" />
         <ImageView
             android:id="@+id/right_icon"

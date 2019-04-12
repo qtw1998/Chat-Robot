@@ -70,6 +70,7 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     private void autoRepeater(String content){
+        // this is a test repeater.
         Msg msg = new Msg(content, Msg.TYPE_RECEIVED);
         msgList.add(msg);
         //show the latest sent message

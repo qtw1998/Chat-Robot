@@ -10,7 +10,7 @@
 
 <div class="time_line">
     <h1>TensorFlow_nlp_robot</h1>
-    <p><span>2019.4.11</span>&nbsp;&nbsp;<a href="#">upload the prototype of an auto-repeater.</a></p>
+    <p><span>2019.4.11</span>&nbsp;&nbsp;<a href="#" style="onMouseOver="this.style.color='#F00';">upload the prototype of an auto-repeater.</a></p>
 </div>
 </body>
 

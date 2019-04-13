@@ -14,6 +14,8 @@ import android.widget.Toast;
 import java.util.ArrayList;
 import java.util.List;
 
+import site.gemus.openingstartanimation.OpeningStartAnimation;
+
 public class ChatActivity extends AppCompatActivity implements View.OnClickListener {
 
     private Button sendButton;
@@ -21,11 +23,18 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
     private RecyclerView msgRecyclerView;
     private MsgAdapter adapter;
     private List<Msg> msgList = new ArrayList<>();
-    //my notes
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_chat);
+
+        // external animation dependency
+        String appStatement = "Create it!";
+        OpeningStartAnimation openingStartAnimation = new OpeningStartAnimation.Builder(this)
+                .setAppStatement(appStatement).create();
+        openingStartAnimation.show(this);
+
         sendButton = (Button) findViewById(R.id.sendButton);
         sendButton.setOnClickListener(this);
         inputEditText = (EditText) findViewById(R.id.input_edit_text);

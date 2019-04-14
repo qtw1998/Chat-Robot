@@ -23,7 +23,7 @@
             android:layout_height="wrap_content"
             android:layout_gravity="center"
             android:layout_margin="5dp"
-            android:background="@drawable/msg_left"
+            android:background="@drawable/message_left"
             android:textSize="18sp" />
     </LinearLayout>
 
@@ -41,7 +41,7 @@
             android:layout_height="wrap_content"
             android:layout_gravity="center_vertical"
             android:layout_margin="5dp"
-            android:background="@drawable/msg_right"
+            android:background="@drawable/message_right"
             android:textSize="18sp" />
         <ImageView
             android:id="@+id/right_icon"

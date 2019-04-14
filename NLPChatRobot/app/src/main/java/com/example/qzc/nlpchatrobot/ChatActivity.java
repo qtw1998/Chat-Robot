@@ -27,7 +27,12 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
         setContentView(R.layout.activity_chat);
+        //change the background in the process
+        //LinearLayout layout = (LinearLayout) findViewById(R.id.chat_activity_layout);
+        //layout.setBackgroundResource(R.drawable.chat_background_new);
+
 
         // external animation dependency
         String appStatement = "Create it!";

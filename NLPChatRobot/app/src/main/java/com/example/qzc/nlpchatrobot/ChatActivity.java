@@ -31,7 +31,7 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
         setContentView(R.layout.activity_chat);
         //change the background in the process
         //LinearLayout layout = (LinearLayout) findViewById(R.id.chat_activity_layout);
-        //layout.setBackgroundResource(R.drawable.chat_background_new);
+        //layout.setBackgroundResource(R.drawable.chat_background_2);
 
 
         // external animation dependency

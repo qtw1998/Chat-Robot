@@ -4,7 +4,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:id="@+id/chat_activity_layout"
-    android:background="@drawable/chat_background_new">
+    android:background="@drawable/chat_background_1">
 
     <android.support.v7.widget.RecyclerView
         android:id="@+id/msg_recycler_view"

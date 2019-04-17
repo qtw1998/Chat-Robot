@@ -11,6 +11,10 @@ import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.Toast;
 
+import org.litepal.LitePal;
+import org.litepal.crud.LitePalSupport;
+import org.litepal.tablemanager.Connector;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -23,22 +27,18 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
     private RecyclerView msgRecyclerView;
     private MsgAdapter adapter;
     private List<Msg> msgList = new ArrayList<>();
+    private int latestRecordId;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        Connector.getDatabase();
+        setLatestRecordId();
         setContentView(R.layout.activity_chat);
-        //change the background in the process
-        //LinearLayout layout = (LinearLayout) findViewById(R.id.chat_activity_layout);
-        //layout.setBackgroundResource(R.drawable.chat_background_2);
+        setOpeningAnimation();
 
-
-        // external animation dependency
-        String appStatement = "Create it!";
-        OpeningStartAnimation openingStartAnimation = new OpeningStartAnimation.Builder(this)
-                .setAppStatement(appStatement).create();
-        openingStartAnimation.show(this);
 
         sendButton = (Button) findViewById(R.id.sendButton);
         sendButton.setOnClickListener(this);
@@ -68,6 +68,8 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
                     msgRecyclerView.scrollToPosition(msgList.size()-1);
                     inputEditText.setText("");
 
+                    saveChatRecords(msg);
+
                     //delay 1 sec to repeat
                     new Handler().postDelayed(new Runnable() {
                         @Override
@@ -83,6 +85,14 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
         }
     }
 
+    private void setOpeningAnimation(){
+        // external animation dependency
+        String appStatement = "Create it!";
+        OpeningStartAnimation openingStartAnimation = new OpeningStartAnimation.Builder(this)
+                .setAppStatement(appStatement).create();
+        openingStartAnimation.show(this);
+    }
+
     private void autoRepeater(String content){
         // this is a test repeater.
         Msg msg = new Msg(content, Msg.TYPE_RECEIVED);
@@ -91,5 +101,27 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
         adapter.notifyItemChanged(msgList.size()-1);
         //scroll to the latest sent message
         msgRecyclerView.scrollToPosition(msgList.size()-1);
+        saveChatRecords(msg);
+
+    }
+
+    private void saveChatRecords(Msg msg){
+        ChatRecord record = new ChatRecord();
+        latestRecordId = latestRecordId + 1;
+        record.setId(latestRecordId);
+        record.setMessage(msg.getContent());
+        record.setType(msg.getType());
+        record.save();
+
+    }
+
+    private void setLatestRecordId(){
+        ChatRecord latestRecord = LitePal.findLast(ChatRecord.class);
+        if (latestRecord == null){
+            latestRecordId = 0;
+        }
+        else{
+            latestRecordId = latestRecord.getId();
+        }
     }
 }

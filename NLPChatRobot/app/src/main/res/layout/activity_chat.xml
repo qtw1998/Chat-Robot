@@ -34,16 +34,16 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_toStartOf="@id/sendButton"
-            android:layout_toEndOf="@id/extraFuncButton" />
+            android:layout_toEndOf="@id/microButton" />
 
         <ImageButton
-            android:id="@+id/extraFuncButton"
+            android:id="@+id/microButton"
             android:layout_width="48dp"
             android:layout_height="48dp"
 
             android:background="@android:color/background_light"
             android:scaleType="centerCrop"
-            android:src="@drawable/extra_func_img_btn1" />
+            android:src="@drawable/micro" />
 
     </RelativeLayout>
 

@@ -5,11 +5,11 @@ import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
+import android.support.v7.widget.Toolbar;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
-import android.widget.LinearLayout;
-import android.widget.Toast;
+
 
 import org.litepal.LitePal;
 import org.litepal.crud.LitePalSupport;
@@ -37,6 +37,8 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
         Connector.getDatabase();
         setLatestRecordId();
         setContentView(R.layout.activity_chat);
+        Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
+        setSupportActionBar(toolbar);
         setOpeningAnimation();
 
 

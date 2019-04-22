@@ -16,3 +16,8 @@ More information about the present animation: "https://blog.csdn.net/qq_33487412
 **2019.04.14**  
 Add a new background image.
 The image should be smaller than 50kb in order to be loaded.
+
+**2019.04.22**  
+Add navigation view.
+Beautify the user interface.
+When choosing different robot types, the robot icon will also be changed.

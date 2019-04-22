@@ -21,3 +21,4 @@ The image should be smaller than 50kb in order to be loaded.
 Add navigation view.
 Beautify the user interface.
 When choosing different robot types, the robot icon will also be changed.
+To know the different "drawable" directories, please check "https://blog.csdn.net/xuaho0907/article/details/72848520"

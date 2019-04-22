@@ -15,6 +15,16 @@ import java.util.List;
 public class MsgAdapter extends RecyclerView.Adapter<MsgAdapter.ViewHolder> {
 
     private List<Msg> mMsgList;
+    public static final int ROBOT_1 = 1;
+    public static final int ROBOT_2 = 2;
+    private int robotType = ROBOT_1;
+
+    public int getRobotType(){
+        return robotType;
+    }
+    public void setRobotType(int robotType){
+        this.robotType = robotType;
+    }
 
     static class ViewHolder extends RecyclerView.ViewHolder {
 
@@ -48,6 +58,16 @@ public class MsgAdapter extends RecyclerView.Adapter<MsgAdapter.ViewHolder> {
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         Msg msg = mMsgList.get(position);
         if (msg.getType() == Msg.TYPE_RECEIVED){
+            switch (robotType){
+                case ROBOT_1:
+                    holder.leftIcon.setImageResource(R.drawable.robot_1);
+                    break;
+                case ROBOT_2:
+                    holder.leftIcon.setImageResource(R.drawable.robot_2);
+                    break;
+                default:
+                    break;
+            }
             holder.leftLayout.setVisibility(View.VISIBLE);
             holder.rightLayout.setVisibility(View.INVISIBLE);
             holder.leftTextView.setText(msg.getContent());

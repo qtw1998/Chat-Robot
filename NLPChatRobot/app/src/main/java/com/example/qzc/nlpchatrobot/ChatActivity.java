@@ -1,26 +1,34 @@
 package com.example.qzc.nlpchatrobot;
 
 import android.os.Handler;
+import android.support.annotation.NonNull;
+import android.support.design.widget.NavigationView;
+import android.support.v4.view.GravityCompat;
+import android.support.v4.widget.DrawerLayout;
+import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
+import android.view.Gravity;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.Toast;
 
 
 import org.litepal.LitePal;
 import org.litepal.crud.LitePalSupport;
 import org.litepal.tablemanager.Connector;
-
 import java.util.ArrayList;
 import java.util.List;
-
 import site.gemus.openingstartanimation.OpeningStartAnimation;
 
-public class ChatActivity extends AppCompatActivity implements View.OnClickListener {
+
+public class ChatActivity extends AppCompatActivity implements View.OnClickListener, NavigationView.OnNavigationItemSelectedListener {
 
     private Button sendButton;
     private EditText inputEditText;
@@ -28,6 +36,7 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
     private MsgAdapter adapter;
     private List<Msg> msgList = new ArrayList<>();
     private int latestRecordId;
+    private DrawerLayout mDrawerLayout;
 
 
     @Override
@@ -39,6 +48,14 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
         setContentView(R.layout.activity_chat);
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
+        mDrawerLayout = (DrawerLayout) findViewById(R.id.drawer_layout);
+        ActionBar actionBar = getSupportActionBar();
+        if(actionBar != null){
+            actionBar.setDisplayHomeAsUpEnabled(true);
+            actionBar.setHomeAsUpIndicator(R.drawable.drawer_menu);
+        }
+
+
         setOpeningAnimation();
 
 
@@ -52,6 +69,9 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
 
         adapter = new MsgAdapter(msgList);
         msgRecyclerView.setAdapter(adapter);
+
+        NavigationView navView = (NavigationView) findViewById(R.id.nav_view);
+        navView.setNavigationItemSelectedListener(this);
 
     }
 
@@ -72,6 +92,8 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
 
                     saveChatRecords(msg);
 
+                    //codes about using neutral network API
+
                     //delay 1 sec to repeat
                     new Handler().postDelayed(new Runnable() {
                         @Override
@@ -87,8 +109,32 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
         }
     }
 
+    @Override
+    public boolean onNavigationItemSelected(@NonNull MenuItem menuItem) {
+        switch (menuItem.getItemId()){
+            case R.id.robot_1:
+                Toast.makeText(ChatActivity.this, "Switch to Robot 1", Toast.LENGTH_SHORT).show();
+                adapter.setRobotType(MsgAdapter.ROBOT_1);
+                //codes about using neutral network API 1
+
+
+                mDrawerLayout.closeDrawers();
+                break;
+            case R.id.robot_2:
+                Toast.makeText(ChatActivity.this, "Switch to Robot 2", Toast.LENGTH_SHORT).show();
+                adapter.setRobotType(MsgAdapter.ROBOT_2);
+                //codes about using neutral network API 2
+
+
+                mDrawerLayout.closeDrawers();
+                break;
+            default:
+        }
+        return true;
+    }
+
     private void setOpeningAnimation(){
-        // external animation dependency
+        // Use the external animation dependency to show the opening animation
         String appStatement = "Create it!";
         OpeningStartAnimation openingStartAnimation = new OpeningStartAnimation.Builder(this)
                 .setAppStatement(appStatement).create();
@@ -108,6 +154,7 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     private void saveChatRecords(Msg msg){
+        //save the chat records into the local database
         ChatRecord record = new ChatRecord();
         latestRecordId = latestRecordId + 1;
         record.setId(latestRecordId);
@@ -118,6 +165,7 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     private void setLatestRecordId(){
+        //find the latest record id in the local database
         ChatRecord latestRecord = LitePal.findLast(ChatRecord.class);
         if (latestRecord == null){
             latestRecordId = 0;
@@ -125,5 +173,29 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
         else{
             latestRecordId = latestRecord.getId();
         }
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        // use to create the toolbar menu
+        getMenuInflater().inflate(R.menu.toolbar, menu);
+        return super.onCreateOptionsMenu(menu);
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        // use to listen to the item in the toolbar menu
+        switch (item.getItemId()){
+            case android.R.id.home:
+                mDrawerLayout.openDrawer(GravityCompat.START);
+                break;
+            case R.id.contact_us:
+                Toast.makeText(ChatActivity.this, "Contact Us", Toast.LENGTH_SHORT).show();
+                //codes about contacting to the author
+
+                break;
+            default:
+        }
+        return true;
     }
 }

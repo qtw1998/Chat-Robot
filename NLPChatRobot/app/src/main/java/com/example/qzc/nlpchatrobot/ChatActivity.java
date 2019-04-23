@@ -1,8 +1,20 @@
 package com.example.qzc.nlpchatrobot;
 
+import android.content.Intent;
+import android.content.IntentFilter;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.Drawable;
+import android.net.Uri;
+import android.os.Build;
+import android.os.Environment;
 import android.os.Handler;
+import android.provider.MediaStore;
 import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.support.design.widget.NavigationView;
+import android.support.v4.content.FileProvider;
 import android.support.v4.view.GravityCompat;
 import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.ActionBar;
@@ -11,24 +23,32 @@ import android.os.Bundle;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
-import android.view.Gravity;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.Switch;
 import android.widget.Toast;
 
 
 import org.litepal.LitePal;
-import org.litepal.crud.LitePalSupport;
 import org.litepal.tablemanager.Connector;
+
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import site.gemus.openingstartanimation.OpeningStartAnimation;
 
+import static android.os.Environment.DIRECTORY_PICTURES;
+
 
 public class ChatActivity extends AppCompatActivity implements View.OnClickListener, NavigationView.OnNavigationItemSelectedListener {
+
 
     private Button sendButton;
     private EditText inputEditText;
@@ -37,6 +57,10 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
     private List<Msg> msgList = new ArrayList<>();
     private int latestRecordId;
     private DrawerLayout mDrawerLayout;
+    private IntentFilter intentFilter;
+    private NetworkChangeReceiver networkChangeReceiver;
+    private Uri imageUri;
+    public static final int REQUEST_TAKE_PHOTO = 1001;
 
 
     @Override
@@ -45,6 +69,7 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
 
         Connector.getDatabase();
         setLatestRecordId();
+
         setContentView(R.layout.activity_chat);
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
@@ -55,8 +80,8 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
             actionBar.setHomeAsUpIndicator(R.drawable.drawer_menu);
         }
 
-
-        setOpeningAnimation();
+        //uncomment the following to show the opening animation
+        //setOpeningAnimation();
 
 
         sendButton = (Button) findViewById(R.id.sendButton);
@@ -73,6 +98,18 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
         NavigationView navView = (NavigationView) findViewById(R.id.nav_view);
         navView.setNavigationItemSelectedListener(this);
 
+        // set the network status receiver
+        intentFilter = new IntentFilter();
+        intentFilter.addAction("android.net.conn.CONNECTIVITY_CHANGE");
+        networkChangeReceiver = new NetworkChangeReceiver();
+        registerReceiver(networkChangeReceiver, intentFilter);
+
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        unregisterReceiver(networkChangeReceiver);
     }
 
     @Override
@@ -128,9 +165,69 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
 
                 mDrawerLayout.closeDrawers();
                 break;
+            case R.id.camera:
+                openCamera();
+                break;
             default:
         }
         return true;
+    }
+
+
+    private void openCamera(){
+        // Create a File Object to store the image taken
+        String imageName = String.format("output_image_%d.jpg", latestRecordId);
+        File outputImage = new File(getExternalFilesDir("images"), imageName);
+        try{
+            if (outputImage.exists()){outputImage.delete();}
+            outputImage.createNewFile();
+
+        }
+        catch (IOException e){
+            e.printStackTrace();
+        }
+        if (Build.VERSION.SDK_INT>=24){
+            imageUri = FileProvider.getUriForFile(ChatActivity.this,
+                    "com.example.qzc.nlpchatrobot.fileprovider", outputImage);
+        }
+        else {
+            imageUri = Uri.fromFile(outputImage);
+        }
+
+
+
+        // open the camera
+        Intent intent = new Intent("android.media.action.IMAGE_CAPTURE");
+        intent.putExtra(MediaStore.EXTRA_OUTPUT, imageUri);
+        startActivityForResult(intent, REQUEST_TAKE_PHOTO);
+    }
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        switch(requestCode){
+            case REQUEST_TAKE_PHOTO:
+                if (resultCode == RESULT_OK){
+                    try{
+                        //test codes: show the picture as the background
+                        Bitmap bitmap = BitmapFactory.decodeStream(getContentResolver().openInputStream(imageUri));
+                        LinearLayout linearLayout = (LinearLayout) findViewById(R.id.chat_activity_layout);
+                        Drawable drawable = new BitmapDrawable(bitmap);
+                        linearLayout.setBackground(drawable);
+
+                        // save the image chat record
+                        //image save path: "/storage/emulated/0/Android/data/com.example.qzc.nlpchatrobot/files/images/"
+                        String imageName = String.format("output_image_%d.jpg", latestRecordId);
+                        String imgSavePath = Environment.getExternalStorageDirectory().getPath() + "/Android/data/com.example.qzc.nlpchatrobot/files/images/" + imageName;
+                        Msg msg = new Msg(imgSavePath, Msg.TYPE_PHOTO);
+                        saveChatRecords(msg);
+                    }
+                    catch (FileNotFoundException e){
+                        e.printStackTrace();
+                    }
+                }
+                break;
+            default:
+                break;
+        }
     }
 
     private void setOpeningAnimation(){
@@ -156,11 +253,11 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
     private void saveChatRecords(Msg msg){
         //save the chat records into the local database
         ChatRecord record = new ChatRecord();
-        latestRecordId = latestRecordId + 1;
         record.setId(latestRecordId);
         record.setMessage(msg.getContent());
         record.setType(msg.getType());
         record.save();
+        latestRecordId = latestRecordId + 1;
 
     }
 
@@ -168,7 +265,7 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
         //find the latest record id in the local database
         ChatRecord latestRecord = LitePal.findLast(ChatRecord.class);
         if (latestRecord == null){
-            latestRecordId = 0;
+            latestRecordId = 1;
         }
         else{
             latestRecordId = latestRecord.getId();

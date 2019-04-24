@@ -117,7 +117,7 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
         switch (v.getId()){
             case R.id.sendButton:
                 //Toast.makeText(ChatActivity.this, "Clicked", Toast.LENGTH_SHORT).show();
-                final String content = inputEditText.getText().toString();
+                String content = inputEditText.getText().toString();
                 if(!"".equals(content)){
                     Msg msg = new Msg(content, Msg.TYPE_SENT);
                     msgList.add(msg);
@@ -126,18 +126,11 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
                     //scroll to the latest sent message
                     msgRecyclerView.scrollToPosition(msgList.size()-1);
                     inputEditText.setText("");
-
                     saveChatRecords(msg);
 
                     //codes about using neutral network API
 
-                    //delay 1 sec to repeat
-                    new Handler().postDelayed(new Runnable() {
-                        @Override
-                        public void run() {
-                            autoRepeater(content);
-                        }
-                    }, 1000);
+                    autoRepeater(msg.getContent());
 
                 }
                 break;
@@ -194,31 +187,40 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
             imageUri = Uri.fromFile(outputImage);
         }
 
-
-
         // open the camera
         Intent intent = new Intent("android.media.action.IMAGE_CAPTURE");
         intent.putExtra(MediaStore.EXTRA_OUTPUT, imageUri);
         startActivityForResult(intent, REQUEST_TAKE_PHOTO);
     }
+
+
+
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         switch(requestCode){
             case REQUEST_TAKE_PHOTO:
                 if (resultCode == RESULT_OK){
                     try{
-                        //test codes: show the picture as the background
+                        //set the bitmap picture in the adapter
                         Bitmap bitmap = BitmapFactory.decodeStream(getContentResolver().openInputStream(imageUri));
-                        LinearLayout linearLayout = (LinearLayout) findViewById(R.id.chat_activity_layout);
-                        Drawable drawable = new BitmapDrawable(bitmap);
-                        linearLayout.setBackground(drawable);
+                        adapter.setRightImgBitmap(bitmap);
 
-                        // save the image chat record
-                        //image save path: "/storage/emulated/0/Android/data/com.example.qzc.nlpchatrobot/files/images/"
                         String imageName = String.format("output_image_%d.jpg", latestRecordId);
                         String imgSavePath = Environment.getExternalStorageDirectory().getPath() + "/Android/data/com.example.qzc.nlpchatrobot/files/images/" + imageName;
                         Msg msg = new Msg(imgSavePath, Msg.TYPE_PHOTO);
+
+                        // save the image chat record
+                        //image save path: "/storage/emulated/0/Android/data/com.example.qzc.nlpchatrobot/files/images/"
+                        msgList.add(msg);
+                        //show the latest sent message
+                        adapter.notifyItemChanged(msgList.size()-1);
+                        //scroll to the latest sent message
+                        msgRecyclerView.scrollToPosition(msgList.size()-1);
                         saveChatRecords(msg);
+
+                        autoRepeater(msg.getContent());
+
+
                     }
                     catch (FileNotFoundException e){
                         e.printStackTrace();
@@ -238,17 +240,24 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
         openingStartAnimation.show(this);
     }
 
-    private void autoRepeater(String content){
-        // this is a test repeater.
-        Msg msg = new Msg(content, Msg.TYPE_RECEIVED);
-        msgList.add(msg);
-        //show the latest sent message
-        adapter.notifyItemChanged(msgList.size()-1);
-        //scroll to the latest sent message
-        msgRecyclerView.scrollToPosition(msgList.size()-1);
-        saveChatRecords(msg);
 
+    private void autoRepeater(final String content){
+        //delay 1 sec to repeat
+        new Handler().postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                // this is a test repeater.
+                Msg msg = new Msg(content, Msg.TYPE_RECEIVED);
+                msgList.add(msg);
+                //show the latest sent message
+                adapter.notifyItemChanged(msgList.size()-1);
+                //scroll to the latest sent message
+                msgRecyclerView.scrollToPosition(msgList.size()-1);
+                saveChatRecords(msg);
+            }
+        }, 1000);
     }
+
 
     private void saveChatRecords(Msg msg){
         //save the chat records into the local database
@@ -258,8 +267,8 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
         record.setType(msg.getType());
         record.save();
         latestRecordId = latestRecordId + 1;
-
     }
+
 
     private void setLatestRecordId(){
         //find the latest record id in the local database

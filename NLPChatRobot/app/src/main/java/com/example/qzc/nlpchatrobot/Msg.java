@@ -2,9 +2,9 @@ package com.example.qzc.nlpchatrobot;
 
 public class Msg {
 
-    public static final int TYPE_RECEIVED = 0;
-    public static final int TYPE_SENT = 1;
-    public static final int TYPE_PHOTO = 2;
+    public static final int TYPE_RECEIVED = 101;
+    public static final int TYPE_SENT = 102;
+    public static final int TYPE_PHOTO = 103;
     private String content;
     private int type;
 

@@ -22,3 +22,6 @@ Add navigation view.
 Beautify the user interface.
 When choosing different robot types, the robot icon will also be changed.
 To know the different "drawable" directories, please check "https://blog.csdn.net/xuaho0907/article/details/72848520"
+
+**2019.04.24** 
+ Add the function of taking a photo and sending the picture to the chatting frame.

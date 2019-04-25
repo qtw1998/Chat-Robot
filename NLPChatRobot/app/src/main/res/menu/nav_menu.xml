@@ -8,9 +8,14 @@
             android:icon="@drawable/camera">
         </item>
         <item
-            android:id="@+id/Gallery"
-            android:title="gallery"
+            android:id="@+id/gallery"
+            android:title="Gallery"
             android:icon="@drawable/gallery">
+        </item>
+        <item
+            android:id="@+id/chat_background"
+            android:title="Chat Background"
+            android:icon="@drawable/chat_background">
         </item>
         <item
             android:id="@+id/switch_mode"

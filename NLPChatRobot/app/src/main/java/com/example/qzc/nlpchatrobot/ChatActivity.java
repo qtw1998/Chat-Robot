@@ -1,7 +1,9 @@
 package com.example.qzc.nlpchatrobot;
 
+import android.content.ContentUris;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.drawable.BitmapDrawable;
@@ -10,6 +12,7 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Environment;
 import android.os.Handler;
+import android.provider.DocumentsContract;
 import android.provider.MediaStore;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
@@ -28,9 +31,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
-import android.widget.ImageView;
 import android.widget.LinearLayout;
-import android.widget.Switch;
 import android.widget.Toast;
 
 
@@ -43,8 +44,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import site.gemus.openingstartanimation.OpeningStartAnimation;
-
-import static android.os.Environment.DIRECTORY_PICTURES;
 
 
 public class ChatActivity extends AppCompatActivity implements View.OnClickListener, NavigationView.OnNavigationItemSelectedListener {
@@ -61,6 +60,8 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
     private NetworkChangeReceiver networkChangeReceiver;
     private Uri imageUri;
     public static final int REQUEST_TAKE_PHOTO = 1001;
+    public static final int REQUEST_SELECT_SENT_PHOTO = 1002;
+    public static final int REQUEST_SELECT_BACKGROUND_PHOTO = 1003;
 
 
     @Override
@@ -69,8 +70,8 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
 
         Connector.getDatabase();
         setLatestRecordId();
-
         setContentView(R.layout.activity_chat);
+
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
         mDrawerLayout = (DrawerLayout) findViewById(R.id.drawer_layout);
@@ -112,6 +113,7 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
         unregisterReceiver(networkChangeReceiver);
     }
 
+
     @Override
     public void onClick(View v) {
         switch (v.getId()){
@@ -120,18 +122,11 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
                 String content = inputEditText.getText().toString();
                 if(!"".equals(content)){
                     Msg msg = new Msg(content, Msg.TYPE_SENT);
-                    msgList.add(msg);
-                    //show the latest sent message
-                    adapter.notifyItemChanged(msgList.size()-1);
-                    //scroll to the latest sent message
-                    msgRecyclerView.scrollToPosition(msgList.size()-1);
+                    updateChatView(msg);
                     inputEditText.setText("");
-                    saveChatRecords(msg);
-
                     //codes about using neutral network API
 
                     autoRepeater(msg.getContent());
-
                 }
                 break;
             default:
@@ -141,6 +136,7 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
 
     @Override
     public boolean onNavigationItemSelected(@NonNull MenuItem menuItem) {
+        // for the items in the navigation view
         switch (menuItem.getItemId()){
             case R.id.robot_1:
                 Toast.makeText(ChatActivity.this, "Switch to Robot 1", Toast.LENGTH_SHORT).show();
@@ -160,6 +156,12 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
                 break;
             case R.id.camera:
                 openCamera();
+                break;
+            case R.id.gallery:
+                openAlbum(REQUEST_SELECT_SENT_PHOTO);
+                break;
+            case R.id.chat_background:
+                openAlbum(REQUEST_SELECT_BACKGROUND_PHOTO);
                 break;
             default:
         }
@@ -186,11 +188,16 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
         else {
             imageUri = Uri.fromFile(outputImage);
         }
-
         // open the camera
         Intent intent = new Intent("android.media.action.IMAGE_CAPTURE");
         intent.putExtra(MediaStore.EXTRA_OUTPUT, imageUri);
         startActivityForResult(intent, REQUEST_TAKE_PHOTO);
+    }
+
+    private void openAlbum(final int request_code){
+        Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+        intent.setType("image/*");
+        startActivityForResult(intent, request_code);
     }
 
 
@@ -199,32 +206,56 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         switch(requestCode){
             case REQUEST_TAKE_PHOTO:
+                String imageName = String.format("output_image_%d.jpg", latestRecordId);
                 if (resultCode == RESULT_OK){
                     try{
                         //set the bitmap picture in the adapter
                         Bitmap bitmap = BitmapFactory.decodeStream(getContentResolver().openInputStream(imageUri));
                         adapter.setRightImgBitmap(bitmap);
-
-                        String imageName = String.format("output_image_%d.jpg", latestRecordId);
+                        //image save path: "/storage/emulated/0/Android/data/com.example.qzc.nlpchatrobot/files/images/"
                         String imgSavePath = Environment.getExternalStorageDirectory().getPath() + "/Android/data/com.example.qzc.nlpchatrobot/files/images/" + imageName;
                         Msg msg = new Msg(imgSavePath, Msg.TYPE_PHOTO);
-
-                        // save the image chat record
-                        //image save path: "/storage/emulated/0/Android/data/com.example.qzc.nlpchatrobot/files/images/"
-                        msgList.add(msg);
-                        //show the latest sent message
-                        adapter.notifyItemChanged(msgList.size()-1);
-                        //scroll to the latest sent message
-                        msgRecyclerView.scrollToPosition(msgList.size()-1);
-                        saveChatRecords(msg);
+                        updateChatView(msg);
 
                         autoRepeater(msg.getContent());
-
-
                     }
                     catch (FileNotFoundException e){
                         e.printStackTrace();
                     }
+                }
+                else{
+                    File emptyImage = new File(getExternalFilesDir("images"), imageName);
+                    if (emptyImage.exists()){emptyImage.delete();}
+                    }
+                break;
+            case REQUEST_SELECT_SENT_PHOTO:
+                if (resultCode == RESULT_OK){
+                    String imgPath = null;
+                    // check the Android version of the phone
+                    if (Build.VERSION.SDK_INT >= 19){
+                        // for Android 4.4 and higher
+                        imgPath = handleImageGetPathOnKitKat(data);
+                    }
+                    else {
+                        // for Android 4.3 and lower
+                        imgPath = handleImageGetPathBeforeKitKat(data);
+                    }
+                    sendChatImage(imgPath);
+                }
+                break;
+            case REQUEST_SELECT_BACKGROUND_PHOTO:
+                if (resultCode == RESULT_OK){
+                    String imgPath = null;
+                    // check the Android version of the phone
+                    if (Build.VERSION.SDK_INT >= 19){
+                        // for Android 4.4 and higher
+                        imgPath = handleImageGetPathOnKitKat(data);
+                    }
+                    else {
+                        // for Android 4.3 and lower
+                        imgPath = handleImageGetPathBeforeKitKat(data);
+                    }
+                    setUserChatBackground(imgPath);
                 }
                 break;
             default:
@@ -232,12 +263,89 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
         }
     }
 
-    private void setOpeningAnimation(){
-        // Use the external animation dependency to show the opening animation
-        String appStatement = "Create it!";
-        OpeningStartAnimation openingStartAnimation = new OpeningStartAnimation.Builder(this)
-                .setAppStatement(appStatement).create();
-        openingStartAnimation.show(this);
+    private String handleImageGetPathOnKitKat(Intent data){
+        // for Android 4.4 and higher
+        String imagePath = null;
+        Uri uri = data.getData();
+        if (DocumentsContract.isDocumentUri(this,uri)){
+            String docId = DocumentsContract.getDocumentId(uri);
+            if("com.android.providers.media.documents".equals(uri.getAuthority())){
+                String id = docId.split(":")[1];
+                String selection = MediaStore.Images.Media._ID + "=" + id;
+                imagePath = getImagePath(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, selection);
+            }
+            else if ("com.android.providers.downloads.documents".equals(uri.getAuthority())){
+                Uri contentUri = ContentUris.withAppendedId(Uri.parse("content://downloads/public_downloads"), Long.valueOf(docId));
+                imagePath = getImagePath(contentUri, null);
+            }
+        }
+        else if ("content".equalsIgnoreCase(uri.getScheme())){
+            imagePath = getImagePath(uri, null);
+        }
+        else if ("file".equalsIgnoreCase(uri.getScheme())){
+            imagePath = uri.getPath();
+        }
+        return imagePath;
+    }
+
+
+    private String handleImageGetPathBeforeKitKat(Intent data){
+        // for Android 4.3 and lower
+        Uri uri = data.getData();
+        String imagePath = getImagePath(uri, null);
+        return imagePath;
+    }
+
+    private String getImagePath(Uri uri, String selection){
+        String path = null;
+        Cursor cursor = getContentResolver().query(uri, null, selection, null, null);
+        if (cursor != null){
+            if(cursor.moveToFirst()){
+                path = cursor.getString(cursor.getColumnIndex(MediaStore.Images.Media.DATA));
+            }
+            cursor.close();
+        }
+        return path;
+    }
+
+    private void sendChatImage(String imagePath){
+        if (imagePath != null){
+            Bitmap bitmap = BitmapFactory.decodeFile(imagePath);
+            adapter.setRightImgBitmap(bitmap);
+            Msg msg = new Msg(imagePath, Msg.TYPE_PHOTO);
+            // update and save the image chat record
+            updateChatView(msg);
+            autoRepeater(msg.getContent());
+        }
+        else{
+            Toast.makeText(ChatActivity.this,"Fail to load the image.", Toast.LENGTH_SHORT).show();
+        }
+
+    }
+
+    private void setUserChatBackground(String imagePath){
+        if (imagePath != null){
+            Bitmap bitmap = BitmapFactory.decodeFile(imagePath);
+            Drawable drawable = new BitmapDrawable(bitmap);
+            LinearLayout linearLayout = (LinearLayout) findViewById(R.id.chat_activity_layout);
+            linearLayout.setBackground(drawable);
+        }
+        else{
+            Toast.makeText(ChatActivity.this,"Fail to load the image.", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+
+
+    private void updateChatView(Msg msg){
+        // update and save the chat record
+        msgList.add(msg);
+        //show the latest sent message
+        adapter.notifyItemChanged(msgList.size()-1);
+        //scroll to the latest sent message
+        msgRecyclerView.scrollToPosition(msgList.size()-1);
+        saveChatRecords(msg);
+
     }
 
 
@@ -304,4 +412,13 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
         }
         return true;
     }
+
+    private void setOpeningAnimation(){
+        // Use the external animation dependency to show the opening animation
+        String appStatement = "Create it!";
+        OpeningStartAnimation openingStartAnimation = new OpeningStartAnimation.Builder(this)
+                .setAppStatement(appStatement).create();
+        openingStartAnimation.show(this);
+    }
 }
+

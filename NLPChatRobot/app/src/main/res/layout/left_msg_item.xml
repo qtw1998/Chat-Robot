@@ -16,6 +16,7 @@
             android:layout_height="36dp"
             android:layout_gravity="center_vertical"
             android:layout_marginStart="10dp"
+            android:layout_marginEnd="10dp"
             android:src="@drawable/robot_1"
             app:civ_circle_background_color="@color/papayaWhip"/>
 
@@ -25,7 +26,9 @@
             android:layout_weight="1"
             android:layout_height="wrap_content"
             android:layout_gravity="center"
-            android:layout_margin="5dp"
+            android:layout_marginEnd="56dp"
+            android:layout_marginTop="5dp"
+            android:layout_marginBottom="5dp"
             android:background="@drawable/left_bubble"
             android:textSize="18sp" />
     </LinearLayout>

@@ -28,6 +28,6 @@
             app:civ_circle_background_color="@color/papayaWhip"/>
 
     </LinearLayout>
-    
+
 
 </RelativeLayout>

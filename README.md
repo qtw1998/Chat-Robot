@@ -25,3 +25,6 @@ To know the different "drawable" directories, please check "https://blog.csdn.ne
 
 **2019.04.24** 
  Add the function of taking a photo and sending the picture to the chatting frame.
+ 
+ **2019.04.24** 
+ Add the function of selecting a photo from the phone ablum and sending to the chatting frame.

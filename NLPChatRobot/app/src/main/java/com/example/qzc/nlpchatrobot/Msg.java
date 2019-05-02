@@ -7,10 +7,12 @@ public class Msg {
     public static final int TYPE_PHOTO = 103;
     private String content;
     private int type;
+    private int id;
 
-    public Msg(String content, int type){
+    public Msg(String content, int type, int id){
         this.content = content;
         this.type = type;
+        this.id = id;
     }
 
     public String getContent(){
@@ -20,4 +22,6 @@ public class Msg {
     public int getType(){
         return type;
     }
+
+    public int getId() { return id; }
 }

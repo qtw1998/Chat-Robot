@@ -1,6 +1,7 @@
 package com.example.qzc.nlpchatrobot;
 
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.media.Image;
 import android.support.annotation.NonNull;
 import android.support.v7.widget.RecyclerView;
@@ -26,12 +27,6 @@ public class MsgAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     }
     public void setRobotType(int robotType){
         this.robotType = robotType;
-    }
-
-
-    private Bitmap rightImgBitmap;
-    public void setRightImgBitmap(Bitmap bm){
-        this.rightImgBitmap = bm;
     }
 
 
@@ -164,7 +159,7 @@ public class MsgAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         }
 
         else if(holder instanceof RightImageViewHolder){
-            ((RightImageViewHolder) holder).rightImageView.setImageBitmap(rightImgBitmap);
+            ((RightImageViewHolder) holder).rightImageView.setImageBitmap(BitmapFactory.decodeFile(msg.getContent()));
         }
     }
 

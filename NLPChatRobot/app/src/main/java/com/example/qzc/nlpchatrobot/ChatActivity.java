@@ -20,6 +20,7 @@ import android.support.design.widget.NavigationView;
 import android.support.v4.content.FileProvider;
 import android.support.v4.view.GravityCompat;
 import android.support.v4.widget.DrawerLayout;
+import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -46,13 +47,14 @@ import java.util.List;
 import site.gemus.openingstartanimation.OpeningStartAnimation;
 
 
-public class ChatActivity extends AppCompatActivity implements View.OnClickListener, NavigationView.OnNavigationItemSelectedListener {
+public class ChatActivity extends AppCompatActivity implements View.OnClickListener, NavigationView.OnNavigationItemSelectedListener, SwipeRefreshLayout.OnRefreshListener {
 
 
     private Button sendButton;
     private EditText inputEditText;
     private RecyclerView msgRecyclerView;
     private MsgAdapter adapter;
+    private SwipeRefreshLayout swipeRefreshLayout;
     private List<Msg> msgList = new ArrayList<>();
     private int latestRecordId;
     private DrawerLayout mDrawerLayout;
@@ -96,6 +98,10 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
         adapter = new MsgAdapter(msgList);
         msgRecyclerView.setAdapter(adapter);
 
+        swipeRefreshLayout = (SwipeRefreshLayout) findViewById(R.id.swipe_refresh_layout);
+        swipeRefreshLayout.setColorSchemeResources(R.color.colorPrimary);
+        swipeRefreshLayout.setOnRefreshListener(this);
+
         NavigationView navView = (NavigationView) findViewById(R.id.nav_view);
         navView.setNavigationItemSelectedListener(this);
 
@@ -121,7 +127,7 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
                 //Toast.makeText(ChatActivity.this, "Clicked", Toast.LENGTH_SHORT).show();
                 String content = inputEditText.getText().toString();
                 if(!"".equals(content)){
-                    Msg msg = new Msg(content, Msg.TYPE_SENT);
+                    Msg msg = new Msg(content, Msg.TYPE_SENT, latestRecordId);
                     updateChatView(msg);
                     inputEditText.setText("");
                     //codes about using neutral network API
@@ -132,6 +138,40 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
             default:
                 break;
         }
+    }
+
+    @Override
+    public void onRefresh() {
+        //Load chat records from the local database
+        try{
+            int latestToLoadMsgId = 0;
+            if (msgList.isEmpty()) {
+                ChatRecord lastChatRecord = LitePal.findLast(ChatRecord.class);
+                if (null == lastChatRecord){
+                    Toast.makeText(this, "No More Chat Records", Toast.LENGTH_SHORT).show();
+                }
+                else{ latestToLoadMsgId = lastChatRecord.getId(); }
+            }
+            else{ latestToLoadMsgId = msgList.get(0).getId() - 1; }
+
+
+            if (latestToLoadMsgId <= 0){
+                Toast.makeText(this, "No More Chat Records", Toast.LENGTH_SHORT).show();
+            }
+            else{
+                // load 10 pieces of messages at one time
+                for (int id=latestToLoadMsgId; id>(latestToLoadMsgId-10) && id>0; id--){
+                    ChatRecord chatRecord = LitePal.find(ChatRecord.class, id);
+                    Msg recordMsg = new Msg(chatRecord.getMessage(), chatRecord.getType(), chatRecord.getId());
+                    msgList.add(0, recordMsg);
+                    adapter.notifyItemInserted(0);
+                }
+            }
+        }
+        catch (Exception e){
+            e.printStackTrace();
+        }
+        swipeRefreshLayout.setRefreshing(false);
     }
 
     @Override
@@ -209,17 +249,14 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
                 String imageName = String.format("output_image_%d.jpg", latestRecordId);
                 if (resultCode == RESULT_OK){
                     try{
-                        //set the bitmap picture in the adapter
-                        Bitmap bitmap = BitmapFactory.decodeStream(getContentResolver().openInputStream(imageUri));
-                        adapter.setRightImgBitmap(bitmap);
                         //image save path: "/storage/emulated/0/Android/data/com.example.qzc.nlpchatrobot/files/images/"
                         String imgSavePath = Environment.getExternalStorageDirectory().getPath() + "/Android/data/com.example.qzc.nlpchatrobot/files/images/" + imageName;
-                        Msg msg = new Msg(imgSavePath, Msg.TYPE_PHOTO);
+                        Msg msg = new Msg(imgSavePath, Msg.TYPE_PHOTO, latestRecordId);
                         updateChatView(msg);
 
                         autoRepeater(msg.getContent());
                     }
-                    catch (FileNotFoundException e){
+                    catch (Exception e){
                         e.printStackTrace();
                     }
                 }
@@ -310,9 +347,7 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
 
     private void sendChatImage(String imagePath){
         if (imagePath != null){
-            Bitmap bitmap = BitmapFactory.decodeFile(imagePath);
-            adapter.setRightImgBitmap(bitmap);
-            Msg msg = new Msg(imagePath, Msg.TYPE_PHOTO);
+            Msg msg = new Msg(imagePath, Msg.TYPE_PHOTO, latestRecordId);
             // update and save the image chat record
             updateChatView(msg);
             autoRepeater(msg.getContent());
@@ -355,7 +390,7 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
             @Override
             public void run() {
                 // this is a test repeater.
-                Msg msg = new Msg(content, Msg.TYPE_RECEIVED);
+                Msg msg = new Msg(content, Msg.TYPE_RECEIVED, latestRecordId);
                 msgList.add(msg);
                 //show the latest sent message
                 adapter.notifyItemChanged(msgList.size()-1);
@@ -370,7 +405,7 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
     private void saveChatRecords(Msg msg){
         //save the chat records into the local database
         ChatRecord record = new ChatRecord();
-        record.setId(latestRecordId);
+        record.setId(msg.getId());
         record.setMessage(msg.getContent());
         record.setType(msg.getType());
         record.save();
@@ -385,7 +420,7 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
             latestRecordId = 1;
         }
         else{
-            latestRecordId = latestRecord.getId();
+            latestRecordId = latestRecord.getId() + 1;
         }
     }
 

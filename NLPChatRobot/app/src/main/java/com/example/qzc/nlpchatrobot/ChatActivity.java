@@ -1,17 +1,21 @@
 package com.example.qzc.nlpchatrobot;
 
+import android.app.ProgressDialog;
 import android.content.ContentUris;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
+import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Environment;
 import android.os.Handler;
+import android.os.Message;
 import android.provider.DocumentsContract;
 import android.provider.MediaStore;
 import android.support.annotation.NonNull;
@@ -39,11 +43,15 @@ import android.widget.Toast;
 import org.litepal.LitePal;
 import org.litepal.tablemanager.Connector;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Timer;
+
 import site.gemus.openingstartanimation.OpeningStartAnimation;
 
 
@@ -57,6 +65,7 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
     private SwipeRefreshLayout swipeRefreshLayout;
     private List<Msg> msgList = new ArrayList<>();
     private int latestRecordId;
+    private int robotType = Msg.ROBOT_1;
     private DrawerLayout mDrawerLayout;
     private IntentFilter intentFilter;
     private NetworkChangeReceiver networkChangeReceiver;
@@ -64,6 +73,7 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
     public static final int REQUEST_TAKE_PHOTO = 1001;
     public static final int REQUEST_SELECT_SENT_PHOTO = 1002;
     public static final int REQUEST_SELECT_BACKGROUND_PHOTO = 1003;
+    public static final int REQUEST_ASK_PERMISSIONS = 2001;
 
 
     @Override
@@ -111,6 +121,8 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
         networkChangeReceiver = new NetworkChangeReceiver();
         registerReceiver(networkChangeReceiver, intentFilter);
 
+        getPermissions();
+
     }
 
     @Override
@@ -119,15 +131,39 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
         unregisterReceiver(networkChangeReceiver);
     }
 
+    private void getPermissions(){
+        //get the permissions
+        int hasCameraPermission = checkSelfPermission("android.permission.CAMERA");
+        int hasWriteExternalStoragePermission = checkSelfPermission("android.permission.WRITE_EXTERNAL_STORAGE");
+        if (hasCameraPermission != PackageManager.PERMISSION_GRANTED || hasWriteExternalStoragePermission != PackageManager.PERMISSION_GRANTED){
+            requestPermissions(new String[] {"android.permission.CAMERA",
+                    "android.permission.WRITE_EXTERNAL_STORAGE"}, REQUEST_ASK_PERMISSIONS);
+        }
+    }
+
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        switch (requestCode){
+            case REQUEST_ASK_PERMISSIONS:
+                if (grantResults[0] != PackageManager.PERMISSION_GRANTED || grantResults[1] != PackageManager.PERMISSION_GRANTED){
+                    // Permission Denied
+                    Toast.makeText(ChatActivity.this, "Permissions denied.\nPlease check the permission manually." +
+                            "\nOR it cannot work properly.", Toast.LENGTH_LONG).show();
+                }
+                break;
+            default:
+                break;
+        }
+    }
 
     @Override
     public void onClick(View v) {
         switch (v.getId()){
             case R.id.sendButton:
-                //Toast.makeText(ChatActivity.this, "Clicked", Toast.LENGTH_SHORT).show();
                 String content = inputEditText.getText().toString();
                 if(!"".equals(content)){
-                    Msg msg = new Msg(content, Msg.TYPE_SENT, latestRecordId);
+                    Msg msg = new Msg(content, Msg.TYPE_SENT, latestRecordId, robotType);
                     updateChatView(msg);
                     inputEditText.setText("");
                     //codes about using neutral network API
@@ -162,7 +198,7 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
                 // load 10 pieces of messages at one time
                 for (int id=latestToLoadMsgId; id>(latestToLoadMsgId-10) && id>0; id--){
                     ChatRecord chatRecord = LitePal.find(ChatRecord.class, id);
-                    Msg recordMsg = new Msg(chatRecord.getMessage(), chatRecord.getType(), chatRecord.getId());
+                    Msg recordMsg = new Msg(chatRecord.getMessage(), chatRecord.getType(), chatRecord.getId(), chatRecord.getRobotType());
                     msgList.add(0, recordMsg);
                     adapter.notifyItemInserted(0);
                 }
@@ -180,7 +216,7 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
         switch (menuItem.getItemId()){
             case R.id.robot_1:
                 Toast.makeText(ChatActivity.this, "Switch to Robot 1", Toast.LENGTH_SHORT).show();
-                adapter.setRobotType(MsgAdapter.ROBOT_1);
+                robotType = Msg.ROBOT_1;
                 //codes about using neutral network API 1
 
 
@@ -188,7 +224,7 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
                 break;
             case R.id.robot_2:
                 Toast.makeText(ChatActivity.this, "Switch to Robot 2", Toast.LENGTH_SHORT).show();
-                adapter.setRobotType(MsgAdapter.ROBOT_2);
+                robotType = Msg.ROBOT_2;
                 //codes about using neutral network API 2
 
 
@@ -251,10 +287,7 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
                     try{
                         //image save path: "/storage/emulated/0/Android/data/com.example.qzc.nlpchatrobot/files/images/"
                         String imgSavePath = Environment.getExternalStorageDirectory().getPath() + "/Android/data/com.example.qzc.nlpchatrobot/files/images/" + imageName;
-                        Msg msg = new Msg(imgSavePath, Msg.TYPE_PHOTO, latestRecordId);
-                        updateChatView(msg);
-
-                        autoRepeater(msg.getContent());
+                        sendChatImage(imgSavePath);
                     }
                     catch (Exception e){
                         e.printStackTrace();
@@ -273,10 +306,12 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
                         // for Android 4.4 and higher
                         imgPath = handleImageGetPathOnKitKat(data);
                     }
+                    /*
                     else {
                         // for Android 4.3 and lower
                         imgPath = handleImageGetPathBeforeKitKat(data);
                     }
+                    */
                     sendChatImage(imgPath);
                 }
                 break;
@@ -288,10 +323,12 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
                         // for Android 4.4 and higher
                         imgPath = handleImageGetPathOnKitKat(data);
                     }
+                    /*
                     else {
                         // for Android 4.3 and lower
                         imgPath = handleImageGetPathBeforeKitKat(data);
                     }
+                    */
                     setUserChatBackground(imgPath);
                 }
                 break;
@@ -325,13 +362,14 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
         return imagePath;
     }
 
-
+    /*
     private String handleImageGetPathBeforeKitKat(Intent data){
         // for Android 4.3 and lower
         Uri uri = data.getData();
         String imagePath = getImagePath(uri, null);
         return imagePath;
     }
+    */
 
     private String getImagePath(Uri uri, String selection){
         String path = null;
@@ -347,15 +385,24 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
 
     private void sendChatImage(String imagePath){
         if (imagePath != null){
-            Msg msg = new Msg(imagePath, Msg.TYPE_PHOTO, latestRecordId);
+            Msg msg = new Msg(imagePath, Msg.TYPE_PHOTO, latestRecordId, robotType);
             // update and save the image chat record
             updateChatView(msg);
             autoRepeater(msg.getContent());
+            processChatImage(imagePath);
         }
         else{
             Toast.makeText(ChatActivity.this,"Fail to load the image.", Toast.LENGTH_SHORT).show();
         }
 
+    }
+
+    private void processChatImage(String originalImagePath){
+        //compress and crop the image in another thread
+        //params    strings[0]:original image path  strings[1]:crop ratio 0-1   strings[2]:compress quality 1-100
+        String quality = "80";
+        String ratio = "0.7";
+        new ImageProcessTask().execute(originalImagePath, ratio, quality);
     }
 
     private void setUserChatBackground(String imagePath){
@@ -390,7 +437,7 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
             @Override
             public void run() {
                 // this is a test repeater.
-                Msg msg = new Msg(content, Msg.TYPE_RECEIVED, latestRecordId);
+                Msg msg = new Msg(content, Msg.TYPE_RECEIVED, latestRecordId, robotType);
                 msgList.add(msg);
                 //show the latest sent message
                 adapter.notifyItemChanged(msgList.size()-1);
@@ -408,6 +455,7 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
         record.setId(msg.getId());
         record.setMessage(msg.getContent());
         record.setType(msg.getType());
+        record.setRobotType(msg.getRobotType());
         record.save();
         latestRecordId = latestRecordId + 1;
     }
@@ -455,5 +503,83 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
                 .setAppStatement(appStatement).create();
         openingStartAnimation.show(this);
     }
+
+
+
+
+
+    // this class is used to process the real image fed to the neutral network
+    private class ImageProcessTask extends AsyncTask<String, Void, Boolean> {
+        private ProgressDialog progressDialog = new ProgressDialog(ChatActivity.this);
+        @Override
+        protected void onPreExecute() {
+            progressDialog.show();
+
+        }
+
+        @Override
+        protected Boolean doInBackground(String... strings) {
+            //params    strings[0]:original image path  strings[1]:crop ratio   strings[2]:compress quality
+            String originalImagePath = strings[0];
+            Bitmap originalBitmap = BitmapFactory.decodeFile(originalImagePath);
+            // the following path is used to store the image saved after compressed and cropped
+            String imgSavePath = getExternalCacheDir().getPath() + "/cache_image.jpg";
+            File file = new File(imgSavePath);
+
+            //center_crop the image with a ratio
+            double ratio = Double.parseDouble(strings[1]);
+            Bitmap croppedBitmap;
+            if (ratio > 0 && ratio < 1){
+                int croppedWidth = (int) (ratio*originalBitmap.getWidth());
+                int croppedHeight = (int) (ratio*originalBitmap.getHeight());
+                int croppedXStart = (int) ((1 - ratio) * originalBitmap.getWidth()/2);
+                int croppedYStart = (int) ((1 - ratio) * originalBitmap.getHeight()/2);
+                croppedBitmap = Bitmap.createBitmap(originalBitmap, croppedXStart, croppedYStart, croppedWidth, croppedHeight);
+            }
+            else{
+                croppedBitmap = Bitmap.createBitmap(originalBitmap);
+            }
+
+
+            //compress the image with a quality 1-100 to decrease the storage space
+            int quality = Integer.parseInt(strings[2]);
+            try{
+                if (file.exists()) {file.delete();}
+                file.createNewFile();
+                FileOutputStream fileOutputStream = new FileOutputStream(file);
+                croppedBitmap.compress(Bitmap.CompressFormat.JPEG, quality, fileOutputStream);
+                fileOutputStream.flush();
+                fileOutputStream.close();
+                // test lines
+                Thread.sleep(500);
+
+            }
+            catch (Exception e){
+                e.printStackTrace();
+                return false;
+            }
+            return true;
+        }
+
+        @Override
+        protected void onProgressUpdate(Void... values) {
+            progressDialog.setMessage("Processing ......");
+        }
+
+        @Override
+        protected void onPostExecute(Boolean result) {
+            progressDialog.dismiss();
+            if (result){
+                Toast.makeText(ChatActivity.this, "Process succeeded", Toast.LENGTH_SHORT).show();
+            }
+            else{
+                Toast.makeText(ChatActivity.this,"Process failed", Toast.LENGTH_SHORT).show();
+            }
+        }
+
+
+    }
+
+
 }
 

@@ -10,6 +10,8 @@ public class ChatRecord extends LitePalSupport {
 
     private int type;
 
+    private int robotType;
+
     private String message;
 
     public int getId(){
@@ -24,6 +26,8 @@ public class ChatRecord extends LitePalSupport {
         return message;
     }
 
+    public int getRobotType() {return robotType; }
+
     public void setId(int id){
         this.id = id;
     }
@@ -35,4 +39,6 @@ public class ChatRecord extends LitePalSupport {
     public void setMessage(String message){
         this.message = message;
     }
+
+    public void setRobotType(int robotType) {this.robotType = robotType; }
 }

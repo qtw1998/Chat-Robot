@@ -17,19 +17,6 @@ import java.util.List;
 
 public class MsgAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 
-    //define the different robot types
-    public static final int ROBOT_1 = 11;
-    public static final int ROBOT_2 = 12;
-    private int robotType = ROBOT_1;
-
-    public int getRobotType(){
-        return robotType;
-    }
-    public void setRobotType(int robotType){
-        this.robotType = robotType;
-    }
-
-
     // the msg list to fill the holders
     private List<Msg> mMsgList;
 
@@ -37,11 +24,6 @@ public class MsgAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         mMsgList = msgList;
     }
 
-
-    // define different view holder types
-    private static final int TYPE_LEFT_TEXT = 21;
-    private static final int TYPE_RIGHT_TEXT = 22;
-    private static final int TYPE_RIGHT_PHOTO = 23;
 
     //a view holder for the left text: the user receives a text message
     static class LeftTextViewHolder extends RecyclerView.ViewHolder {
@@ -93,18 +75,7 @@ public class MsgAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     @Override
     public int getItemViewType(int position) {
         Msg msg = mMsgList.get(position);
-        int msgType = msg.getType();
-        switch (msgType){
-            case Msg.TYPE_RECEIVED:
-                return TYPE_LEFT_TEXT;
-            case Msg.TYPE_SENT:
-                return TYPE_RIGHT_TEXT;
-            case Msg.TYPE_PHOTO:
-                return TYPE_RIGHT_PHOTO;
-            default:
-                // to correspond with default case of the onCreateViewHolder function
-                return TYPE_RIGHT_TEXT;
-        }
+        return msg.getType();
     }
 
 
@@ -114,15 +85,15 @@ public class MsgAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     @Override
     public RecyclerView.ViewHolder onCreateViewHolder(@NonNull ViewGroup viewGroup, int viewType) {
         switch (viewType){
-            case TYPE_LEFT_TEXT:
+            case Msg.TYPE_RECEIVED:
                 View leftTextView = LayoutInflater.from(viewGroup.getContext())
                         .inflate(R.layout.left_msg_item, viewGroup, false);
                 return new LeftTextViewHolder(leftTextView);
-            case TYPE_RIGHT_TEXT:
+            case Msg.TYPE_SENT:
                 View rightTextView = LayoutInflater.from(viewGroup.getContext())
                         .inflate(R.layout.right_msg_item, viewGroup, false);
                 return new RightTextViewHolder(rightTextView);
-            case TYPE_RIGHT_PHOTO:
+            case Msg.TYPE_PHOTO:
                 View rightImageView = LayoutInflater.from(viewGroup.getContext())
                         .inflate(R.layout.right_image_item, viewGroup, false);
                 return new RightImageViewHolder(rightImageView);
@@ -142,11 +113,11 @@ public class MsgAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         Msg msg = mMsgList.get(position);
         if (holder instanceof LeftTextViewHolder){
             ((LeftTextViewHolder) holder).leftTextView.setText(msg.getContent());
-            switch (robotType){
-                case ROBOT_1:
+            switch (msg.getRobotType()){
+                case Msg.ROBOT_1:
                     ((LeftTextViewHolder) holder).leftIcon.setImageResource(R.drawable.robot_1);
                     break;
-                case ROBOT_2:
+                case Msg.ROBOT_2:
                     ((LeftTextViewHolder) holder).leftIcon.setImageResource(R.drawable.robot_2);
                     break;
                 default:

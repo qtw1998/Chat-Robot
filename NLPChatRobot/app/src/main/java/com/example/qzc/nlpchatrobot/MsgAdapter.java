@@ -52,7 +52,7 @@ public class MsgAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             super(view);
             rightLayout = (LinearLayout) view.findViewById(R.id.right_msg_layout);
             rightTextView = (TextView) view.findViewById(R.id.right_msg);
-            rightIcon = (ImageView) view.findViewById(R.id.right_icon_for_text);
+            rightIcon = (ImageView) view.findViewById(R.id.right_icon);
         }
     }
 
@@ -66,7 +66,7 @@ public class MsgAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             super(view);
             rightLayout = (LinearLayout) view.findViewById(R.id.right_image_layout);
             rightImageView = (ImageView) view.findViewById(R.id.right_image);
-            rightIcon = (ImageView) view.findViewById(R.id.right_icon_for_img);
+            rightIcon = (ImageView) view.findViewById(R.id.right_icon);
         }
     }
 

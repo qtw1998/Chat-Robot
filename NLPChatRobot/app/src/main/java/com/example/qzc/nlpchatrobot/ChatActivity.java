@@ -15,7 +15,6 @@ import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Environment;
 import android.os.Handler;
-import android.os.Message;
 import android.provider.DocumentsContract;
 import android.provider.MediaStore;
 import android.support.annotation.NonNull;
@@ -31,9 +30,12 @@ import android.os.Bundle;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.Window;
+import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
@@ -43,15 +45,13 @@ import android.widget.Toast;
 import org.litepal.LitePal;
 import org.litepal.tablemanager.Connector;
 
-import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Timer;
 
+import de.hdodenhof.circleimageview.CircleImageView;
 import site.gemus.openingstartanimation.OpeningStartAnimation;
 
 
@@ -74,6 +74,8 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
     public static final int REQUEST_SELECT_SENT_PHOTO = 1002;
     public static final int REQUEST_SELECT_BACKGROUND_PHOTO = 1003;
     public static final int REQUEST_ASK_PERMISSIONS = 2001;
+    public static final String KEY_CHAT_BACKGROUND = "keyChatBackground";
+
 
 
     @Override
@@ -81,7 +83,29 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
         super.onCreate(savedInstanceState);
 
         Connector.getDatabase();
-        setLatestRecordId();
+        readLatestRecordId();
+
+
+        // set the network status receiver
+        intentFilter = new IntentFilter();
+        intentFilter.addAction("android.net.conn.CONNECTIVITY_CHANGE");
+        networkChangeReceiver = new NetworkChangeReceiver();
+        registerReceiver(networkChangeReceiver, intentFilter);
+
+        initView();
+
+        getPermissions();
+
+    }
+
+
+    private void initView(){
+        requestWindowFeature(Window.FEATURE_NO_TITLE);
+        //add by able for soft keyboard show
+        getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_PAN);
+        //end by able
+
+
         setContentView(R.layout.activity_chat);
 
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
@@ -108,22 +132,23 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
         adapter = new MsgAdapter(msgList);
         msgRecyclerView.setAdapter(adapter);
 
+        //swipeRefreshLayout is used to load the chat records
         swipeRefreshLayout = (SwipeRefreshLayout) findViewById(R.id.swipe_refresh_layout);
         swipeRefreshLayout.setColorSchemeResources(R.color.colorPrimary);
         swipeRefreshLayout.setOnRefreshListener(this);
 
+        //navigationView is the drawer layout starting from the left side of the screen
         NavigationView navView = (NavigationView) findViewById(R.id.nav_view);
         navView.setNavigationItemSelectedListener(this);
 
-        // set the network status receiver
-        intentFilter = new IntentFilter();
-        intentFilter.addAction("android.net.conn.CONNECTIVITY_CHANGE");
-        networkChangeReceiver = new NetworkChangeReceiver();
-        registerReceiver(networkChangeReceiver, intentFilter);
+        //load the chat background
+        List<UserInfo> userBackground = LitePal.where("key = ?", KEY_CHAT_BACKGROUND).find(UserInfo.class);
+        if (!userBackground.isEmpty()){ setUserChatBackground(userBackground.get(0).getInfo()); }
 
-        getPermissions();
+
 
     }
+
 
     @Override
     protected void onDestroy() {
@@ -178,37 +203,11 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
 
     @Override
     public void onRefresh() {
-        //Load chat records from the local database
-        try{
-            int latestToLoadMsgId = 0;
-            if (msgList.isEmpty()) {
-                ChatRecord lastChatRecord = LitePal.findLast(ChatRecord.class);
-                if (null == lastChatRecord){
-                    Toast.makeText(this, "No More Chat Records", Toast.LENGTH_SHORT).show();
-                }
-                else{ latestToLoadMsgId = lastChatRecord.getId(); }
-            }
-            else{ latestToLoadMsgId = msgList.get(0).getId() - 1; }
-
-
-            if (latestToLoadMsgId <= 0){
-                Toast.makeText(this, "No More Chat Records", Toast.LENGTH_SHORT).show();
-            }
-            else{
-                // load 10 pieces of messages at one time
-                for (int id=latestToLoadMsgId; id>(latestToLoadMsgId-10) && id>0; id--){
-                    ChatRecord chatRecord = LitePal.find(ChatRecord.class, id);
-                    Msg recordMsg = new Msg(chatRecord.getMessage(), chatRecord.getType(), chatRecord.getId(), chatRecord.getRobotType());
-                    msgList.add(0, recordMsg);
-                    adapter.notifyItemInserted(0);
-                }
-            }
-        }
-        catch (Exception e){
-            e.printStackTrace();
-        }
+        readChatRecords();
         swipeRefreshLayout.setRefreshing(false);
     }
+
+
 
     @Override
     public boolean onNavigationItemSelected(@NonNull MenuItem menuItem) {
@@ -300,36 +299,15 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
                 break;
             case REQUEST_SELECT_SENT_PHOTO:
                 if (resultCode == RESULT_OK){
-                    String imgPath = null;
-                    // check the Android version of the phone
-                    if (Build.VERSION.SDK_INT >= 19){
-                        // for Android 4.4 and higher
-                        imgPath = handleImageGetPathOnKitKat(data);
-                    }
-                    /*
-                    else {
-                        // for Android 4.3 and lower
-                        imgPath = handleImageGetPathBeforeKitKat(data);
-                    }
-                    */
+                    String imgPath = handleImageGetPathOnKitKat(data);
                     sendChatImage(imgPath);
                 }
                 break;
             case REQUEST_SELECT_BACKGROUND_PHOTO:
                 if (resultCode == RESULT_OK){
-                    String imgPath = null;
-                    // check the Android version of the phone
-                    if (Build.VERSION.SDK_INT >= 19){
-                        // for Android 4.4 and higher
-                        imgPath = handleImageGetPathOnKitKat(data);
-                    }
-                    /*
-                    else {
-                        // for Android 4.3 and lower
-                        imgPath = handleImageGetPathBeforeKitKat(data);
-                    }
-                    */
+                    String imgPath = handleImageGetPathOnKitKat(data);
                     setUserChatBackground(imgPath);
+                    saveUserInfo(KEY_CHAT_BACKGROUND, imgPath);
                 }
                 break;
             default:
@@ -361,15 +339,6 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
         }
         return imagePath;
     }
-
-    /*
-    private String handleImageGetPathBeforeKitKat(Intent data){
-        // for Android 4.3 and lower
-        Uri uri = data.getData();
-        String imagePath = getImagePath(uri, null);
-        return imagePath;
-    }
-    */
 
     private String getImagePath(Uri uri, String selection){
         String path = null;
@@ -413,7 +382,7 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
             linearLayout.setBackground(drawable);
         }
         else{
-            Toast.makeText(ChatActivity.this,"Fail to load the image.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(ChatActivity.this,"Failed to load the image.", Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -460,8 +429,25 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
         latestRecordId = latestRecordId + 1;
     }
 
+    private void saveUserInfo(String key, String info){
+        //update or save the user info (icon, picture etc.) into the local database
+        List<UserInfo> userInfos = LitePal.where("key = ?", key).find(UserInfo.class);
+        if (userInfos.isEmpty()){
+            UserInfo userInfo = new UserInfo();
+            userInfo.setKey(key);
+            userInfo.setInfo(info);
+            userInfo.save();
+        }
+        else{
+            UserInfo userinfo = userInfos.get(0);
+            userinfo.setInfo(info);
+            userinfo.save();
+        }
 
-    private void setLatestRecordId(){
+    }
+
+
+    private void readLatestRecordId(){
         //find the latest record id in the local database
         ChatRecord latestRecord = LitePal.findLast(ChatRecord.class);
         if (latestRecord == null){
@@ -470,6 +456,39 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
         else{
             latestRecordId = latestRecord.getId() + 1;
         }
+    }
+
+    private void readChatRecords(){
+        //Load chat records from the local database
+        try{
+            int latestToLoadMsgId = 0;
+            if (msgList.isEmpty()) {
+                ChatRecord lastChatRecord = LitePal.findLast(ChatRecord.class);
+                if (null == lastChatRecord){
+                    Toast.makeText(this, "No More Chat Records", Toast.LENGTH_SHORT).show();
+                }
+                else{ latestToLoadMsgId = lastChatRecord.getId(); }
+            }
+            else{ latestToLoadMsgId = msgList.get(0).getId() - 1; }
+
+
+            if (latestToLoadMsgId <= 0){
+                Toast.makeText(this, "No More Chat Records", Toast.LENGTH_SHORT).show();
+            }
+            else{
+                // load 10 pieces of messages at one time
+                for (int id=latestToLoadMsgId; id>(latestToLoadMsgId-10) && id>0; id--){
+                    ChatRecord chatRecord = LitePal.find(ChatRecord.class, id);
+                    Msg recordMsg = new Msg(chatRecord.getMessage(), chatRecord.getType(), chatRecord.getId(), chatRecord.getRobotType());
+                    msgList.add(0, recordMsg);
+                    adapter.notifyItemInserted(0);
+                }
+            }
+        }
+        catch (Exception e){
+            e.printStackTrace();
+        }
+
     }
 
     @Override

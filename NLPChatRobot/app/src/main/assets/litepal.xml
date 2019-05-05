@@ -9,6 +9,7 @@
     	<dbname value="demo" />
     -->
     <dbname value="ChatRecord" />
+    <dbname value="UserInfo" />
 
     <!--
     	Define the version of your database. Each time you want
@@ -33,6 +34,7 @@
     -->
     <list>
         <mapping class="com.example.qzc.nlpchatrobot.ChatRecord"></mapping>
+        <mapping class="com.example.qzc.nlpchatrobot.UserInfo"></mapping>
     </list>
 
     <!--

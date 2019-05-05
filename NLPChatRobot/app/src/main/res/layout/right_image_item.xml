@@ -8,7 +8,7 @@
     android:orientation="horizontal">
 
     <de.hdodenhof.circleimageview.CircleImageView xmlns:app="http://schemas.android.com/apk/res-auto"
-        android:id="@+id/right_icon_for_img"
+        android:id="@id/right_icon"
         android:layout_width="36dp"
         android:layout_height="36dp"
         android:layout_gravity="center_vertical"

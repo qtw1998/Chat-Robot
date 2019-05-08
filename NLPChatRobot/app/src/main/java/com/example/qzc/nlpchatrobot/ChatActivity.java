@@ -30,6 +30,7 @@ import android.os.Bundle;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
+import android.util.Base64;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -41,13 +42,14 @@ import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.Toast;
 
-
 import org.litepal.LitePal;
 import org.litepal.tablemanager.Connector;
-
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -160,9 +162,12 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
         //get the permissions
         int hasCameraPermission = checkSelfPermission("android.permission.CAMERA");
         int hasWriteExternalStoragePermission = checkSelfPermission("android.permission.WRITE_EXTERNAL_STORAGE");
-        if (hasCameraPermission != PackageManager.PERMISSION_GRANTED || hasWriteExternalStoragePermission != PackageManager.PERMISSION_GRANTED){
+        int hasInternetPermission = checkSelfPermission("android.permission.INTERNET");
+        if (hasCameraPermission != PackageManager.PERMISSION_GRANTED ||
+                hasWriteExternalStoragePermission != PackageManager.PERMISSION_GRANTED ||
+                    hasInternetPermission != PackageManager.PERMISSION_GRANTED){
             requestPermissions(new String[] {"android.permission.CAMERA",
-                    "android.permission.WRITE_EXTERNAL_STORAGE"}, REQUEST_ASK_PERMISSIONS);
+                    "android.permission.WRITE_EXTERNAL_STORAGE", "android.permission.INTERNET"}, REQUEST_ASK_PERMISSIONS);
         }
     }
 
@@ -171,7 +176,8 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         switch (requestCode){
             case REQUEST_ASK_PERMISSIONS:
-                if (grantResults[0] != PackageManager.PERMISSION_GRANTED || grantResults[1] != PackageManager.PERMISSION_GRANTED){
+                if (grantResults[0] != PackageManager.PERMISSION_GRANTED || grantResults[1] != PackageManager.PERMISSION_GRANTED
+                        || grantResults[2] != PackageManager.PERMISSION_GRANTED){
                     // Permission Denied
                     Toast.makeText(ChatActivity.this, "Permissions denied.\nPlease check the permission manually." +
                             "\nOR it cannot work properly.", Toast.LENGTH_LONG).show();
@@ -539,14 +545,49 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
         @Override
         protected Boolean doInBackground(String... strings) {
             //params    strings[0]:original image path  strings[1]:crop ratio   strings[2]:compress quality
+
             String originalImagePath = strings[0];
             Bitmap originalBitmap = BitmapFactory.decodeFile(originalImagePath);
+
             // the following path is used to store the image saved after compressed and cropped
             String imgSavePath = getExternalCacheDir().getPath() + "/cache_image.jpg";
-            File file = new File(imgSavePath);
+            File imageFile = new File(imgSavePath);
 
             //center_crop the image with a ratio
             double ratio = Double.parseDouble(strings[1]);
+            Bitmap croppedBitmap = cropBitmapImage(ratio, originalBitmap);
+
+            //compress the image with a quality 1-100 to decrease the storage space
+            int quality = Integer.parseInt(strings[2]);
+            try{
+                if (imageFile.exists()) {imageFile.delete();}
+                imageFile.createNewFile();
+                FileOutputStream fileOutputStream = new FileOutputStream(imageFile);
+                croppedBitmap.compress(Bitmap.CompressFormat.JPEG, quality, fileOutputStream);
+                fileOutputStream.flush();
+                fileOutputStream.close();
+                // test lines
+                //Thread.sleep(500);
+            }
+            catch (Exception e){
+                e.printStackTrace();
+                return false;
+            }
+
+            // write image string (base 64 encoding) into the text file
+            String imageBase64Str = getImageBase64Str(croppedBitmap);
+
+
+            //manually set the Current Ip and the available port
+            String baseLocalHostUrl = "http://192.168.43.104:5050";
+
+
+            return true;
+        }
+
+
+
+        private Bitmap cropBitmapImage(double ratio, Bitmap originalBitmap){
             Bitmap croppedBitmap;
             if (ratio > 0 && ratio < 1){
                 int croppedWidth = (int) (ratio*originalBitmap.getWidth());
@@ -558,26 +599,36 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
             else{
                 croppedBitmap = Bitmap.createBitmap(originalBitmap);
             }
+            return croppedBitmap;
+        }
 
 
-            //compress the image with a quality 1-100 to decrease the storage space
-            int quality = Integer.parseInt(strings[2]);
+        private String getImageBase64Str(Bitmap bitmap){
+            String imageBase64Str;
             try{
-                if (file.exists()) {file.delete();}
-                file.createNewFile();
-                FileOutputStream fileOutputStream = new FileOutputStream(file);
-                croppedBitmap.compress(Bitmap.CompressFormat.JPEG, quality, fileOutputStream);
-                fileOutputStream.flush();
-                fileOutputStream.close();
-                // test lines
-                Thread.sleep(500);
+                ByteArrayOutputStream byteAOS = new ByteArrayOutputStream();
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 100, byteAOS);
+                byte[] imageByteArray = byteAOS.toByteArray();
+
+                //image text file (base 64 encoding)
+                String imageTextFilePath = getExternalCacheDir().getPath() + "/cache_image.txt";
+                File imageTextFile = new File(imageTextFilePath);
+
+                if (imageTextFile.exists()) {imageTextFile.delete();}
+                imageTextFile.createNewFile();
+
+                FileOutputStream fileOS = new FileOutputStream(imageTextFile);
+
+                imageBase64Str = Base64.encodeToString(imageByteArray, Base64.DEFAULT);
+                fileOS.write(imageBase64Str.getBytes());
+                fileOS.close();
+                return imageBase64Str;
 
             }
             catch (Exception e){
                 e.printStackTrace();
-                return false;
+                return null;
             }
-            return true;
         }
 
         @Override

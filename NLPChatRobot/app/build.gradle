@@ -16,6 +16,9 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
+    packagingOptions {
+        exclude 'META-INF/DEPENDENCIES'
+    }
 }
 
 dependencies {
@@ -30,6 +33,7 @@ dependencies {
     implementation 'org.litepal.android:java:3.0.0'
     implementation 'com.android.support:design:28.0.0'
     implementation 'de.hdodenhof:circleimageview:3.0.0'
+
 
 
 }

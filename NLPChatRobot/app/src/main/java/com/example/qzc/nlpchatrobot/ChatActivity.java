@@ -162,12 +162,10 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
         //get the permissions
         int hasCameraPermission = checkSelfPermission("android.permission.CAMERA");
         int hasWriteExternalStoragePermission = checkSelfPermission("android.permission.WRITE_EXTERNAL_STORAGE");
-        int hasInternetPermission = checkSelfPermission("android.permission.INTERNET");
         if (hasCameraPermission != PackageManager.PERMISSION_GRANTED ||
-                hasWriteExternalStoragePermission != PackageManager.PERMISSION_GRANTED ||
-                    hasInternetPermission != PackageManager.PERMISSION_GRANTED){
+                hasWriteExternalStoragePermission != PackageManager.PERMISSION_GRANTED ){
             requestPermissions(new String[] {"android.permission.CAMERA",
-                    "android.permission.WRITE_EXTERNAL_STORAGE", "android.permission.INTERNET"}, REQUEST_ASK_PERMISSIONS);
+                    "android.permission.WRITE_EXTERNAL_STORAGE"}, REQUEST_ASK_PERMISSIONS);
         }
     }
 
@@ -176,8 +174,7 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         switch (requestCode){
             case REQUEST_ASK_PERMISSIONS:
-                if (grantResults[0] != PackageManager.PERMISSION_GRANTED || grantResults[1] != PackageManager.PERMISSION_GRANTED
-                        || grantResults[2] != PackageManager.PERMISSION_GRANTED){
+                if (grantResults[0] != PackageManager.PERMISSION_GRANTED || grantResults[1] != PackageManager.PERMISSION_GRANTED){
                     // Permission Denied
                     Toast.makeText(ChatActivity.this, "Permissions denied.\nPlease check the permission manually." +
                             "\nOR it cannot work properly.", Toast.LENGTH_LONG).show();

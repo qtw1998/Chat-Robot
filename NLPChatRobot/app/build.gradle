@@ -19,6 +19,11 @@ android {
     packagingOptions {
         exclude 'META-INF/DEPENDENCIES'
     }
+    sourceSets {
+        main{
+            jniLibs.srcDirs = ['libs']
+        }
+    }
 }
 
 dependencies {

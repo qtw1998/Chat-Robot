@@ -45,6 +45,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 
+import com.iflytek.cloud.InitListener;
 import com.iflytek.cloud.RecognizerResult;
 import com.iflytek.cloud.SpeechConstant;
 import com.iflytek.cloud.SpeechError;
@@ -106,7 +107,6 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
     private String voiceToTextResult;
 
 
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -129,7 +129,7 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
 
 
 
-        SpeechUtility.createUtility(ChatActivity.this, SpeechConstant.APPID +"=5ccc52cc");
+        SpeechUtility.createUtility(ChatActivity.this, SpeechConstant.APPID +"=5cb97b62");
 
         mRListener = new RecognizerDialogListener() {
 
@@ -150,7 +150,9 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
         };
 
         mIatDialog = new RecognizerDialog(ChatActivity.this, null);
+
         mIatDialog.setListener(mRListener);
+
 
         tv = (TextView)findViewById(R.id.input_edit_text);
         microButton = (ImageButton) findViewById(R.id.microButton);
@@ -163,7 +165,7 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
 
     private void setIatParam(String filename) {
         // 清空参数
-        mIatDialog.setParameter(SpeechConstant.PARAMS, null);
+        // mIatDialog.setParameter(SpeechConstant.PARAMS, null);
 
         // 设置听写引擎
         mIatDialog.setParameter(SpeechConstant.ENGINE_TYPE, SpeechConstant.TYPE_CLOUD);
@@ -315,7 +317,7 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
                 }
                 break;
             case R.id.microButton:
-                Toast.makeText(ChatActivity.this, "clicked voice input", Toast.LENGTH_SHORT).show();
+                Toast.makeText(ChatActivity.this, "clicked voice input button", Toast.LENGTH_SHORT).show();
                 setIatParam("cache_audio");
                 mIatDialog.show();
                 break;

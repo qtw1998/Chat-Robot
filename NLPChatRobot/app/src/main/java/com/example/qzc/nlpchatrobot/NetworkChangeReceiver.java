@@ -14,7 +14,7 @@ public class NetworkChangeReceiver extends BroadcastReceiver {
         ConnectivityManager connectivityManager = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
         NetworkInfo networkInfo = connectivityManager.getActiveNetworkInfo();
         if (networkInfo != null && networkInfo.isConnected()){
-            Toast.makeText(context, "Network is available! ", Toast.LENGTH_SHORT).show();
+            //Toast.makeText(context, "Network is available! ", Toast.LENGTH_SHORT).show();
         }
         else {
             Toast.makeText(context, "Network is unavailable! \nPlease check your network connection! ", Toast.LENGTH_SHORT).show();

@@ -45,11 +45,14 @@ import android.widget.Toast;
 import org.litepal.LitePal;
 import org.litepal.tablemanager.Connector;
 import java.io.ByteArrayOutputStream;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.net.Socket;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -361,7 +364,9 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
             // update and save the image chat record
             updateChatView(msg);
             autoRepeater(msg.getContent());
+            //crop and compress the image if needed, then send it
             processChatImage(imagePath);
+
         }
         else{
             Toast.makeText(ChatActivity.this,"Fail to load the image.", Toast.LENGTH_SHORT).show();
@@ -372,8 +377,8 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
     private void processChatImage(String originalImagePath){
         //compress and crop the image in another thread
         //params    strings[0]:original image path  strings[1]:crop ratio 0-1   strings[2]:compress quality 1-100
-        String quality = "80";
-        String ratio = "0.7";
+        String quality = "100";
+        String ratio = "1";
         new ImageProcessTask().execute(originalImagePath, ratio, quality);
     }
 
@@ -527,20 +532,21 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
     }
 
 
-
-
-
     // this class is used to process the real image fed to the neutral network
     private class ImageProcessTask extends AsyncTask<String, Void, Boolean> {
+
         private ProgressDialog progressDialog = new ProgressDialog(ChatActivity.this);
+        private String imageCaption;
+
         @Override
         protected void onPreExecute() {
+            // work in UI thread
             progressDialog.show();
-
         }
 
         @Override
         protected Boolean doInBackground(String... strings) {
+            //work in a new thread
             //params    strings[0]:original image path  strings[1]:crop ratio   strings[2]:compress quality
 
             String originalImagePath = strings[0];
@@ -563,78 +569,50 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
                 croppedBitmap.compress(Bitmap.CompressFormat.JPEG, quality, fileOutputStream);
                 fileOutputStream.flush();
                 fileOutputStream.close();
-                // test lines
-                //Thread.sleep(500);
             }
             catch (Exception e){
                 e.printStackTrace();
                 return false;
             }
 
-            // write image string (base 64 encoding) into the text file
-            String imageBase64Str = getImageBase64Str(croppedBitmap);
+            //write image string (base 64 encoding) into the text file
+            //String imageBase64Str = getImageBase64Str(croppedBitmap);
 
-
+            //socket communication for test use
             //manually set the Current Ip and the available port
-            String baseLocalHostUrl = "http://192.168.43.104:5050";
+            //String host = "192.168.43.104";
+            //String host = "10.166.214.4";
+            //final int port = 5050;
+
+            //Socket socket;
+            //try { //建立连接
+            //    socket = new Socket(host, port);
+            //    //获取输出流，通过这个流发送消息
+            //    DataOutputStream out = new DataOutputStream(socket.getOutputStream());
+            //    socketSendBitmapImage(out, croppedBitmap);
+            //    out.close();
+            //    socket.close();
+            //}
+            //    catch (IOException e) { e.printStackTrace(); return false;}
+
+            
+
 
 
             return true;
         }
 
 
-
-        private Bitmap cropBitmapImage(double ratio, Bitmap originalBitmap){
-            Bitmap croppedBitmap;
-            if (ratio > 0 && ratio < 1){
-                int croppedWidth = (int) (ratio*originalBitmap.getWidth());
-                int croppedHeight = (int) (ratio*originalBitmap.getHeight());
-                int croppedXStart = (int) ((1 - ratio) * originalBitmap.getWidth()/2);
-                int croppedYStart = (int) ((1 - ratio) * originalBitmap.getHeight()/2);
-                croppedBitmap = Bitmap.createBitmap(originalBitmap, croppedXStart, croppedYStart, croppedWidth, croppedHeight);
-            }
-            else{
-                croppedBitmap = Bitmap.createBitmap(originalBitmap);
-            }
-            return croppedBitmap;
-        }
-
-
-        private String getImageBase64Str(Bitmap bitmap){
-            String imageBase64Str;
-            try{
-                ByteArrayOutputStream byteAOS = new ByteArrayOutputStream();
-                bitmap.compress(Bitmap.CompressFormat.JPEG, 100, byteAOS);
-                byte[] imageByteArray = byteAOS.toByteArray();
-
-                //image text file (base 64 encoding)
-                String imageTextFilePath = getExternalCacheDir().getPath() + "/cache_image.txt";
-                File imageTextFile = new File(imageTextFilePath);
-
-                if (imageTextFile.exists()) {imageTextFile.delete();}
-                imageTextFile.createNewFile();
-
-                FileOutputStream fileOS = new FileOutputStream(imageTextFile);
-
-                imageBase64Str = Base64.encodeToString(imageByteArray, Base64.DEFAULT);
-                fileOS.write(imageBase64Str.getBytes());
-                fileOS.close();
-                return imageBase64Str;
-
-            }
-            catch (Exception e){
-                e.printStackTrace();
-                return null;
-            }
-        }
-
         @Override
         protected void onProgressUpdate(Void... values) {
+            //work in UI thread
             progressDialog.setMessage("Processing ......");
         }
 
+
         @Override
         protected void onPostExecute(Boolean result) {
+            //work in UI thread
             progressDialog.dismiss();
             if (result){
                 Toast.makeText(ChatActivity.this, "Process succeeded", Toast.LENGTH_SHORT).show();
@@ -644,8 +622,94 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
             }
         }
 
+        // this method should not be used in UI thread; use it in the image process task only
+        private void socketSendBitmapImage(DataOutputStream outputStream, Bitmap bitmap) throws IOException{
+            ByteArrayOutputStream bout = new ByteArrayOutputStream();
+            bitmap.compress(Bitmap.CompressFormat.JPEG,100,bout);
+
+            long len = bout.size();
+
+            Log.i("sendImgMsg", "len: "+len);
+
+            outputStream.write(bout.toByteArray());
+            outputStream.flush();
+        }
+
+        // this method should not be used in UI thread; use it in the image process task only
+        private String socketReceiveImageCaption() {
+            Socket socket;
+            String host = "192.168.43.104";
+            //String host = "10.166.214.4";
+            final int port = 5050;
+            try{
+                socket = new Socket(host, port);
+                DataInputStream inputStream = new DataInputStream(socket.getInputStream());
+                long len = inputStream.readLong();
+                byte[] bytes = new byte[(int)len];
+                inputStream.read(bytes);
+                String caption = new String(bytes);
+                return caption;
+
+            }catch (Exception e){
+                e.printStackTrace();
+                return null;
+            }
+        }
+
+
+
+
+
 
     }
+
+    private Bitmap cropBitmapImage(double ratio, Bitmap originalBitmap){
+
+        Bitmap croppedBitmap;
+        if (ratio > 0 && ratio < 1){
+            int croppedWidth = (int) (ratio*originalBitmap.getWidth());
+            int croppedHeight = (int) (ratio*originalBitmap.getHeight());
+            int croppedXStart = (int) ((1 - ratio) * originalBitmap.getWidth()/2);
+            int croppedYStart = (int) ((1 - ratio) * originalBitmap.getHeight()/2);
+            croppedBitmap = Bitmap.createBitmap(originalBitmap, croppedXStart, croppedYStart, croppedWidth, croppedHeight);
+        }
+        else{
+            croppedBitmap = Bitmap.createBitmap(originalBitmap);
+        }
+        return croppedBitmap;
+    }
+
+    private String getImageBase64Str(Bitmap bitmap){
+        String imageBase64Str;
+        try{
+            ByteArrayOutputStream byteAOS = new ByteArrayOutputStream();
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 100, byteAOS);
+            byte[] imageByteArray = byteAOS.toByteArray();
+
+            //image text file (base 64 encoding)
+            String imageTextFilePath = getExternalCacheDir().getPath() + "/cache_image.txt";
+            File imageTextFile = new File(imageTextFilePath);
+
+            if (imageTextFile.exists()) {imageTextFile.delete();}
+            imageTextFile.createNewFile();
+
+            FileOutputStream fileOS = new FileOutputStream(imageTextFile);
+
+            imageBase64Str = Base64.encodeToString(imageByteArray, Base64.DEFAULT);
+            fileOS.write(imageBase64Str.getBytes());
+            fileOS.close();
+            return imageBase64Str;
+
+        }
+        catch (Exception e){
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+
+
+
 
 
 }

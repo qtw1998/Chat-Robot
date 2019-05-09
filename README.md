@@ -28,3 +28,6 @@ To know the different "drawable" directories, please check "https://blog.csdn.ne
  
  **2019.04.25** 
  Add the function of selecting a photo from the phone ablum and sending to the chatting frame.
+
+ **2019.05.06** 
+ Image Caption Trained and Compressed into a .net File.

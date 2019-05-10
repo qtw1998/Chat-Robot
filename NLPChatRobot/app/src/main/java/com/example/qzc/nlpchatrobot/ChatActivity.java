@@ -500,7 +500,7 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
     private void processChatImage(String originalImagePath){
         //compress and crop the image in another thread
         //params    strings[0]:original image path  strings[1]:crop ratio 0-1   strings[2]:compress quality 1-100
-        String quality = "100";
+        String quality = "65";
         String ratio = "1";
         new ImageProcessTask().execute(originalImagePath, ratio, quality);
     }
@@ -706,35 +706,14 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
             //write image string (base 64 encoding) into the text file
             //String imageBase64Str = getImageBase64Str(croppedBitmap);
 
-            //socket communication for test use
-            //manually set the Current Ip and the available port
-            //String host = "192.168.43.104";
-            //String host = "10.166.214.4";
-            //final int port = 5050;
-
-            //Socket socket;
-            //try { //建立连接
-            //    socket = new Socket(host, port);
-            //    //获取输出流，通过这个流发送消息
-            //    DataOutputStream out = new DataOutputStream(socket.getOutputStream());
-            //    socketSendBitmapImage(out, croppedBitmap);
-            //    out.close();
-            //    socket.close();
-            //}
-            //    catch (IOException e) { e.printStackTrace(); return false;}
-
-            String requestUrl = "http://192.168.43.104:5050";
+            //String requestUrl = "http://192.168.43.104:5050";
+            String requestUrl = "http://192.168.1.103:5050";
             try{
                 netWorkUtils.uploadFile(croppedBitmap, requestUrl,null, "firstImage.jpg");
-
             }catch (Exception e){
                 e.printStackTrace();
                 return false;
             }
-
-
-
-
             return true;
         }
 
@@ -755,40 +734,6 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
             }
             else{
                 Toast.makeText(ChatActivity.this,"Process failed", Toast.LENGTH_SHORT).show();
-            }
-        }
-
-        // this method should not be used in UI thread; use it in the image process task only
-        private void socketSendBitmapImage(DataOutputStream outputStream, Bitmap bitmap) throws IOException{
-            ByteArrayOutputStream bout = new ByteArrayOutputStream();
-            bitmap.compress(Bitmap.CompressFormat.JPEG,100,bout);
-
-            long len = bout.size();
-
-            Log.i("sendImgMsg", "len: "+len);
-
-            outputStream.write(bout.toByteArray());
-            outputStream.flush();
-        }
-
-        // this method should not be used in UI thread; use it in the image process task only
-        private String socketReceiveImageCaption() {
-            Socket socket;
-            String host = "192.168.43.104";
-            //String host = "10.166.214.4";
-            final int port = 5050;
-            try{
-                socket = new Socket(host, port);
-                DataInputStream inputStream = new DataInputStream(socket.getInputStream());
-                long len = inputStream.readLong();
-                byte[] bytes = new byte[(int)len];
-                inputStream.read(bytes);
-                String caption = new String(bytes);
-                return caption;
-
-            }catch (Exception e){
-                e.printStackTrace();
-                return null;
             }
         }
 

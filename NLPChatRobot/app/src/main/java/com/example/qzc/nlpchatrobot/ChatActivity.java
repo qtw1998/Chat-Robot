@@ -41,16 +41,12 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
-import android.widget.TextView;
 import android.widget.Toast;
 
 
-import com.iflytek.cloud.FaceDetector;
-import com.iflytek.cloud.InitListener;
 import com.iflytek.cloud.RecognizerResult;
 import com.iflytek.cloud.SpeechConstant;
 import com.iflytek.cloud.SpeechError;
-import com.iflytek.cloud.SpeechRecognizer;
 import com.iflytek.cloud.SpeechUtility;
 import com.iflytek.cloud.ui.RecognizerDialog;
 import com.iflytek.cloud.ui.RecognizerDialogListener;
@@ -103,6 +99,8 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
     private RecognizerDialogListener mRListener;
     private String voiceToTextResult;
 
+    private NetWorkUtils netWorkUtils = new NetWorkUtils();
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -133,9 +131,9 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
                 String text = parseIatResult(results.getResultString());
                 voiceToTextResult += text;
                 inputEditText.setText(voiceToTextResult);
-                //if (isLast) {
-                //    voiceToTextResult = "";
-                //}
+                if (isLast) {
+                    voiceToTextResult = "";
+                }
             }
 
             @Override
@@ -151,6 +149,7 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
         microButton.setOnClickListener(this);
 
     }
+
 
     private void setIatParam(String filename) {
         // 清空参数
@@ -181,6 +180,7 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
         mIatDialog.setParameter(SpeechConstant.AUDIO_FORMAT,"wav");
         mIatDialog.setParameter(SpeechConstant.ASR_AUDIO_PATH, getExternalCacheDir().getPath() + "/" + filename + ".wav");
     }
+
 
     public static String parseIatResult(String json) {
         StringBuilder ret = new StringBuilder();
@@ -264,6 +264,7 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
         unregisterReceiver(networkChangeReceiver);
     }
 
+
     private void getPermissions() {
         //get the permissions
         final String[] permissions = {"android.permission.RECORD_AUDIO", "android.permission.READ_PHONE_STATE",
@@ -332,7 +333,6 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
     }
 
 
-
     @Override
     public boolean onNavigationItemSelected(@NonNull MenuItem menuItem) {
         // for the items in the navigation view
@@ -394,12 +394,12 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
         startActivityForResult(intent, REQUEST_TAKE_PHOTO);
     }
 
+
     private void openAlbum(final int request_code){
         Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
         intent.setType("image/*");
         startActivityForResult(intent, request_code);
     }
-
 
 
     @Override
@@ -440,6 +440,7 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
         }
     }
 
+
     private String handleImageGetPathOnKitKat(Intent data){
         // for Android 4.4 and higher
         String imagePath = null;
@@ -465,6 +466,7 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
         return imagePath;
     }
 
+
     private String getImagePath(Uri uri, String selection){
         String path = null;
         Cursor cursor = getContentResolver().query(uri, null, selection, null, null);
@@ -476,6 +478,7 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
         }
         return path;
     }
+
 
     private void sendChatImage(String imagePath){
         if (imagePath != null){
@@ -493,6 +496,7 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
 
     }
 
+
     private void processChatImage(String originalImagePath){
         //compress and crop the image in another thread
         //params    strings[0]:original image path  strings[1]:crop ratio 0-1   strings[2]:compress quality 1-100
@@ -500,6 +504,7 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
         String ratio = "1";
         new ImageProcessTask().execute(originalImagePath, ratio, quality);
     }
+
 
     private void setUserChatBackground(String imagePath){
         if (imagePath != null){
@@ -512,7 +517,6 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
             Toast.makeText(ChatActivity.this,"Failed to load the image.", Toast.LENGTH_SHORT).show();
         }
     }
-
 
 
     private void updateChatView(Msg msg){
@@ -556,6 +560,7 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
         latestRecordId = latestRecordId + 1;
     }
 
+
     private void saveUserInfo(String key, String info){
         //update or save the user info (icon, picture etc.) into the local database
         List<UserInfo> userInfos = LitePal.where("key = ?", key).find(UserInfo.class);
@@ -584,6 +589,7 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
             latestRecordId = latestRecord.getId() + 1;
         }
     }
+
 
     private void readChatRecords(){
         //Load chat records from the local database
@@ -618,12 +624,14 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
 
     }
 
+
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         // use to create the toolbar menu
         getMenuInflater().inflate(R.menu.toolbar, menu);
         return super.onCreateOptionsMenu(menu);
     }
+
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
@@ -641,6 +649,7 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
         }
         return true;
     }
+
 
     private void setOpeningAnimation(){
         // Use the external animation dependency to show the opening animation
@@ -714,6 +723,14 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
             //}
             //    catch (IOException e) { e.printStackTrace(); return false;}
 
+            String requestUrl = "http://192.168.43.104:5050";
+            try{
+                netWorkUtils.uploadFile(croppedBitmap, requestUrl,null, "firstImage.jpg");
+
+            }catch (Exception e){
+                e.printStackTrace();
+                return false;
+            }
 
 
 
@@ -775,11 +792,6 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
             }
         }
 
-
-
-
-
-
     }
 
     private Bitmap cropBitmapImage(double ratio, Bitmap originalBitmap){
@@ -797,6 +809,7 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
         }
         return croppedBitmap;
     }
+
 
     private String getImageBase64Str(Bitmap bitmap){
         String imageBase64Str;
@@ -825,10 +838,6 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
             return null;
         }
     }
-
-
-
-
 
 
 }

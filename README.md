@@ -31,3 +31,7 @@ To know the different "drawable" directories, please check "https://blog.csdn.ne
 
  **2019.05.06** 
  Image Caption Trained and Compressed into a .net File.
+ 
+ **2019.05.09** 
+Add the funciton of converting voice input to text using Iflytek SDK.
+Modify the required permissions.

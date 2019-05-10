@@ -709,7 +709,7 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
             //String requestUrl = "http://192.168.43.104:5050";
             String requestUrl = "http://192.168.1.103:5050";
             try{
-                netWorkUtils.uploadFile(croppedBitmap, requestUrl,null, "firstImage.jpg");
+                imageCaption = netWorkUtils.uploadFile(croppedBitmap, requestUrl,null, "firstImage.jpg");
             }catch (Exception e){
                 e.printStackTrace();
                 return false;
@@ -731,6 +731,7 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
             progressDialog.dismiss();
             if (result){
                 Toast.makeText(ChatActivity.this, "Process succeeded", Toast.LENGTH_SHORT).show();
+                autoRepeater(imageCaption);
             }
             else{
                 Toast.makeText(ChatActivity.this,"Process failed", Toast.LENGTH_SHORT).show();

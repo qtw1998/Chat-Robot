@@ -146,7 +146,6 @@ public class NetWorkUtils {
                         .append(";filename=\"")
                         .append(imageName)
                         .append("\"\n");
-                sb.append("Content-Type: image/jpg");
                 sb.append(LINE_END).append(LINE_END);
                 dos.write(sb.toString().getBytes());
                 InputStream is = Bitmap2InputStream(file);
@@ -158,7 +157,6 @@ public class NetWorkUtils {
 
 
                 is.close();
-                //                dos.write(file);
                 dos.write(LINE_END.getBytes());
                 byte[] end_data = (PREFIX + BOUNDARY + PREFIX + LINE_END).getBytes();
                 dos.write(end_data);
@@ -170,7 +168,6 @@ public class NetWorkUtils {
                  */
 
                 int res = conn.getResponseCode();
-                System.out.println("res=========" + res);
                 if (res == 200) {
                     InputStream input = conn.getInputStream();
                     StringBuffer sb1 = new StringBuffer();
@@ -179,7 +176,6 @@ public class NetWorkUtils {
                         sb1.append((char) ss);
                     }
                     result = sb1.toString();
-                } else {
                 }
             }
         } catch (MalformedURLException e) {

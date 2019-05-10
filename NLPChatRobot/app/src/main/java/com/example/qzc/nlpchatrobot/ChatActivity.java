@@ -99,13 +99,8 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
     private static final int PERMISSION_REQUEST = 2000;
     public static final String KEY_CHAT_BACKGROUND = "keyChatBackground";
 
-
-
-
     private RecognizerDialog mIatDialog;
     private RecognizerDialogListener mRListener;
-
-    private TextView tv;
     private String voiceToTextResult;
 
 
@@ -129,17 +124,15 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
         getPermissions();
 
 
-
         //about Iat: voice to text
         SpeechUtility.createUtility(ChatActivity.this, SpeechConstant.APPID +"=5cb97b62");
 
         mRListener = new RecognizerDialogListener() {
-
             @Override
             public void onResult(RecognizerResult results, boolean isLast) {
                 String text = parseIatResult(results.getResultString());
                 voiceToTextResult += text;
-                tv.setText(voiceToTextResult);
+                inputEditText.setText(voiceToTextResult);
                 //if (isLast) {
                 //    voiceToTextResult = "";
                 //}
@@ -154,13 +147,8 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
         mIatDialog = new RecognizerDialog(ChatActivity.this, null);
         mIatDialog.setListener(mRListener);
 
-
-        tv = (TextView)findViewById(R.id.input_edit_text);
         ImageButton microButton = (ImageButton) findViewById(R.id.microButton);
         microButton.setOnClickListener(this);
-
-
-
 
     }
 
@@ -191,7 +179,7 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
         // 设置音频保存路径，保存音频格式支持pcm、wav，设置路径为sd卡请注意WRITE_EXTERNAL_STORAGE权限
         // 注：AUDIO_FORMAT参数语记需要更新版本才能生效
         mIatDialog.setParameter(SpeechConstant.AUDIO_FORMAT,"wav");
-        mIatDialog.setParameter(SpeechConstant.ASR_AUDIO_PATH, getExternalCacheDir().getPath() + filename + ".wav");
+        mIatDialog.setParameter(SpeechConstant.ASR_AUDIO_PATH, getExternalCacheDir().getPath() + "/" + filename + ".wav");
     }
 
     public static String parseIatResult(String json) {

@@ -45,6 +45,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 
+import com.iflytek.cloud.FaceDetector;
 import com.iflytek.cloud.InitListener;
 import com.iflytek.cloud.RecognizerResult;
 import com.iflytek.cloud.SpeechConstant;
@@ -65,9 +66,13 @@ import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.net.PasswordAuthentication;
 import java.net.Socket;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+
 import de.hdodenhof.circleimageview.CircleImageView;
 import site.gemus.openingstartanimation.OpeningStartAnimation;
 
@@ -77,7 +82,7 @@ import site.gemus.openingstartanimation.OpeningStartAnimation;
 public class ChatActivity extends AppCompatActivity implements View.OnClickListener, NavigationView.OnNavigationItemSelectedListener, SwipeRefreshLayout.OnRefreshListener {
 
 
-    private Button sendButton;
+
     private EditText inputEditText;
     private RecyclerView msgRecyclerView;
     private MsgAdapter adapter;
@@ -86,23 +91,20 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
     private int latestRecordId;
     private int robotType = Msg.ROBOT_1;
     private DrawerLayout mDrawerLayout;
-    private IntentFilter intentFilter;
     private NetworkChangeReceiver networkChangeReceiver;
-    private Uri imageUri;
+
     public static final int REQUEST_TAKE_PHOTO = 1001;
     public static final int REQUEST_SELECT_SENT_PHOTO = 1002;
     public static final int REQUEST_SELECT_BACKGROUND_PHOTO = 1003;
-    public static final int REQUEST_ASK_PERMISSIONS = 2001;
+    private static final int PERMISSION_REQUEST = 2000;
     public static final String KEY_CHAT_BACKGROUND = "keyChatBackground";
 
 
 
 
-    private SpeechRecognizer mIat;
     private RecognizerDialog mIatDialog;
     private RecognizerDialogListener mRListener;
 
-    private ImageButton microButton;
     private TextView tv;
     private String voiceToTextResult;
 
@@ -117,7 +119,7 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
         readLatestRecordId();
 
         // set the network status receiver
-        intentFilter = new IntentFilter();
+        IntentFilter intentFilter = new IntentFilter();
         intentFilter.addAction("android.net.conn.CONNECTIVITY_CHANGE");
         networkChangeReceiver = new NetworkChangeReceiver();
         registerReceiver(networkChangeReceiver, intentFilter);
@@ -128,7 +130,7 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
 
 
 
-
+        //about Iat: voice to text
         SpeechUtility.createUtility(ChatActivity.this, SpeechConstant.APPID +"=5cb97b62");
 
         mRListener = new RecognizerDialogListener() {
@@ -138,9 +140,9 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
                 String text = parseIatResult(results.getResultString());
                 voiceToTextResult += text;
                 tv.setText(voiceToTextResult);
-                if (isLast) {
-                    voiceToTextResult = "";
-                }
+                //if (isLast) {
+                //    voiceToTextResult = "";
+                //}
             }
 
             @Override
@@ -150,12 +152,11 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
         };
 
         mIatDialog = new RecognizerDialog(ChatActivity.this, null);
-
         mIatDialog.setListener(mRListener);
 
 
         tv = (TextView)findViewById(R.id.input_edit_text);
-        microButton = (ImageButton) findViewById(R.id.microButton);
+        ImageButton microButton = (ImageButton) findViewById(R.id.microButton);
         microButton.setOnClickListener(this);
 
 
@@ -194,7 +195,7 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     public static String parseIatResult(String json) {
-        StringBuffer ret = new StringBuffer();
+        StringBuilder ret = new StringBuilder();
         try {
             JSONTokener tokener = new JSONTokener(json);
             JSONObject joResult = new JSONObject(tokener);
@@ -240,7 +241,7 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
         //setOpeningAnimation();
 
 
-        sendButton = (Button) findViewById(R.id.sendButton);
+        Button sendButton = (Button) findViewById(R.id.sendButton);
         sendButton.setOnClickListener(this);
         inputEditText = (EditText) findViewById(R.id.input_edit_text);
 
@@ -275,14 +276,19 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
         unregisterReceiver(networkChangeReceiver);
     }
 
-    private void getPermissions(){
+    private void getPermissions() {
         //get the permissions
-        int hasCameraPermission = checkSelfPermission("android.permission.CAMERA");
-        int hasWriteExternalStoragePermission = checkSelfPermission("android.permission.WRITE_EXTERNAL_STORAGE");
-        if (hasCameraPermission != PackageManager.PERMISSION_GRANTED ||
-                hasWriteExternalStoragePermission != PackageManager.PERMISSION_GRANTED ){
-            requestPermissions(new String[] {"android.permission.CAMERA",
-                    "android.permission.WRITE_EXTERNAL_STORAGE"}, REQUEST_ASK_PERMISSIONS);
+        final String[] permissions = {"android.permission.RECORD_AUDIO", "android.permission.READ_PHONE_STATE",
+                "android.permission.WRITE_EXTERNAL_STORAGE",  "android.permission.CAMERA"};
+        boolean requestOrNot = false;
+        for (String permission: permissions) {
+            int hasPermission = checkSelfPermission(permission);
+            if(hasPermission != PackageManager.PERMISSION_GRANTED){
+                requestOrNot = true;
+            }
+        }
+        if(requestOrNot){
+            requestPermissions(permissions, PERMISSION_REQUEST);
         }
     }
 
@@ -290,11 +296,15 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         switch (requestCode){
-            case REQUEST_ASK_PERMISSIONS:
-                if (grantResults[0] != PackageManager.PERMISSION_GRANTED || grantResults[1] != PackageManager.PERMISSION_GRANTED){
+            case PERMISSION_REQUEST:
+                boolean showWarnInfo = false;
+                for (int result:grantResults) {
+                    if(result != PackageManager.PERMISSION_GRANTED){showWarnInfo = true;}
+                }
+                if (showWarnInfo){
                     // Permission Denied
-                    Toast.makeText(ChatActivity.this, "Permissions denied.\nPlease check the permission manually." +
-                            "\nOR it cannot work properly.", Toast.LENGTH_LONG).show();
+                    Toast.makeText(ChatActivity.this, "Required permissions denied.\nPlease check it manually.",
+                            Toast.LENGTH_LONG).show();
                 }
                 break;
             default:
@@ -317,7 +327,8 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
                 }
                 break;
             case R.id.microButton:
-                Toast.makeText(ChatActivity.this, "clicked voice input button", Toast.LENGTH_SHORT).show();
+                //Iat: voice to text
+                //Toast.makeText(ChatActivity.this, "clicked voice input button", Toast.LENGTH_SHORT).show();
                 setIatParam("cache_audio");
                 mIatDialog.show();
                 break;
@@ -371,6 +382,7 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
 
     private void openCamera(){
         // Create a File Object to store the image taken
+        Uri imageUri;
         String imageName = String.format("output_image_%d.jpg", latestRecordId);
         File outputImage = new File(getExternalFilesDir("images"), imageName);
         try{

@@ -35,3 +35,6 @@ To know the different "drawable" directories, please check "https://blog.csdn.ne
  **2019.05.09** 
 Add the funciton of converting voice input to text using Iflytek SDK.
 Modify the required permissions.
+
+ **2019.05.10** 
+Realize the function of sending images to the server and fetching the captions of the images.

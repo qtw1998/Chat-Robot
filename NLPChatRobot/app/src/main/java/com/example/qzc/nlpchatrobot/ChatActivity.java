@@ -100,6 +100,8 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
     private String voiceToTextResult;
 
     private NetWorkUtils netWorkUtils = new NetWorkUtils();
+    private final String requestUrl = "http://192.168.43.104:5050";
+    //private final String requestUrl = "http://192.168.1.103:5050";
 
 
     @Override
@@ -500,7 +502,7 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
     private void processChatImage(String originalImagePath){
         //compress and crop the image in another thread
         //params    strings[0]:original image path  strings[1]:crop ratio 0-1   strings[2]:compress quality 1-100
-        String quality = "65";
+        String quality = "100";
         String ratio = "1";
         new ImageProcessTask().execute(originalImagePath, ratio, quality);
     }
@@ -706,8 +708,6 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
             //write image string (base 64 encoding) into the text file
             //String imageBase64Str = getImageBase64Str(croppedBitmap);
 
-            //String requestUrl = "http://192.168.43.104:5050";
-            String requestUrl = "http://192.168.1.103:5050";
             try{
                 imageCaption = netWorkUtils.uploadFile(croppedBitmap, requestUrl,null, "firstImage.jpg");
             }catch (Exception e){

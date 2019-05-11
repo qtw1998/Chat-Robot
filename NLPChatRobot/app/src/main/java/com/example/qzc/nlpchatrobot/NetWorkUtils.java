@@ -75,7 +75,7 @@ public class NetWorkUtils {
         return result;
     }
 
-    private static int TIME_OUT = 10 * 1000;   //超时时间
+    private static int TIME_OUT = 20 * 1000;   //超时时间
     private static String CHARSET = "utf-8"; //设置编码
 
 

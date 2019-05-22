@@ -1,11 +1,9 @@
-package com.example.qzc.nlpchatrobot;
+package com.example.qzc.nlpchatrobot.network;
 
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.PixelFormat;
 import android.graphics.drawable.Drawable;
-import android.util.Log;
-
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -14,29 +12,22 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
 
-/**
- * @author Jun
- * @time 2016/9/1  18:40
- * @desc 网络请求
- */
-public class NetWorkUtils {
 
-    /**
-     * POST的网络请求
-     *
-     * @param urlPath
-     * @param paramsMap
-     * @return
-     */
-    public static String doPost(String urlPath, Map<String, String> paramsMap) {
+public class NetWorkUtils implements NetworkRequest {
+
+    private static int TIME_OUT = 20 * 1000;   //设置超时时间
+    private static String CHARSET = "utf-8"; //设置编码
+
+
+    @Override
+    public String doPost(String urlPath, Map<String, String> paramsMap) {
+        //提交一次POST请求，paramsMap为提交请求时的相关参数，result为返回的response
         String result = "";
         BufferedReader reader = null;
         HttpURLConnection conn = null;
@@ -44,12 +35,17 @@ public class NetWorkUtils {
             URL url = new URL(urlPath);
             conn = (HttpURLConnection) url.openConnection();
             conn.setRequestMethod("POST");
+            conn.setReadTimeout(TIME_OUT);
+            conn.setConnectTimeout(TIME_OUT);
+            conn.setRequestProperty("Charset", CHARSET);  //设置编码
             conn.setDoOutput(true);
             String parames = "";
+            //添加POST访问的参数
             for (Map.Entry<String, String> entry : paramsMap.entrySet()) {
                 parames += ("&" + entry.getKey() + "=" + entry.getValue());
             }
             conn.getOutputStream().write(parames.substring(1).getBytes());
+            //如果有response则接收
             if (conn.getResponseCode() == 200) {
                 reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
                 String line = "";
@@ -57,7 +53,6 @@ public class NetWorkUtils {
                     result += line;
                 }
             }
-
         } catch (Exception e) {
             e.printStackTrace();
         } finally {
@@ -75,24 +70,16 @@ public class NetWorkUtils {
         return result;
     }
 
-    private static int TIME_OUT = 20 * 1000;   //超时时间
-    private static String CHARSET = "utf-8"; //设置编码
 
 
-    /**
-     * android上传文件到服务器
-     *
-     * @param file       需要上传的文件
-     * @param RequestURL 请求的rul
-     * @return 返回响应的内容
-     */
-    public static String uploadFile(Bitmap file, String RequestURL, Map<String, String> param, String imageName) {
+    @Override
+    public String uploadFile(Bitmap file, String RequestURL, Map<String, String> param, String imageName) {
         String result = null;
-        String BOUNDARY = UUID.randomUUID().toString();  //边界标识   随机生成
+        String BOUNDARY = UUID.randomUUID().toString();  //边界标识，随机生成
         String PREFIX = "--", LINE_END = "\r\n";
         String CONTENT_TYPE = "multipart/form-data";   //内容类型
         // 显示进度框
-        //      showProgressDialog();
+        // showProgressDialog();
         try {
             URL url = new URL(RequestURL);
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
@@ -106,17 +93,15 @@ public class NetWorkUtils {
             conn.setRequestProperty("connection", "keep-alive");
             conn.setRequestProperty("Content-Type", CONTENT_TYPE + ";boundary=" + BOUNDARY);
             if (file != null) {
-                /**
-                 * 当文件不为空，把文件包装并且上传
-                 */
+
+                //当文件不为空，把文件包装，以类似于表单的形式并且上传
                 DataOutputStream dos = new DataOutputStream(conn.getOutputStream());
-                StringBuffer sb = new StringBuffer();
+                StringBuffer sb;
 
                 String params = "";
                 if (param != null && param.size() > 0) {
                     Iterator<String> it = param.keySet().iterator();
                     while (it.hasNext()) {
-                        sb = null;
                         sb = new StringBuffer();
                         String key = it.next();
                         String value = param.get(key);
@@ -135,11 +120,9 @@ public class NetWorkUtils {
                 sb.append(PREFIX);
                 sb.append(BOUNDARY);
                 sb.append(LINE_END);
-                /**
-                 * 这里重点注意：
-                 * name里面的值为服务器端需要key   只有这个key 才可以得到对应的文件
-                 * filename是文件的名字，包含后缀名的   比如:abc.png
-                 */
+
+                // name里面的值为服务器端需要key   只有这个key 才可以得到对应的文件
+                // filename是文件的名字，包含后缀名的   比如:abc.png
                 sb.append("Content-Disposition: form-data; name=\"")
                         .append("image")
                         .append("\"")
@@ -148,6 +131,7 @@ public class NetWorkUtils {
                         .append("\"\n");
                 sb.append(LINE_END).append(LINE_END);
                 dos.write(sb.toString().getBytes());
+                //将Bitmap图片转为二进制数组发送
                 InputStream is = Bitmap2InputStream(file);
                 byte[] bytes = new byte[1024];
                 int len = 0;
@@ -160,13 +144,9 @@ public class NetWorkUtils {
                 dos.write(LINE_END.getBytes());
                 byte[] end_data = (PREFIX + BOUNDARY + PREFIX + LINE_END).getBytes();
                 dos.write(end_data);
-
                 dos.flush();
-                /**
-                 * 获取响应码  200=成功
-                 * 当响应成功，获取响应的流
-                 */
-
+                // 获取响应码  200=成功
+                // 当响应成功，获取响应的流
                 int res = conn.getResponseCode();
                 if (res == 200) {
                     InputStream input = conn.getInputStream();
@@ -178,9 +158,7 @@ public class NetWorkUtils {
                     result = sb1.toString();
                 }
             }
-        } catch (MalformedURLException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
         return result;
@@ -188,24 +166,11 @@ public class NetWorkUtils {
 
 
     // 将Bitmap转换成InputStream
-    public static InputStream Bitmap2InputStream(Bitmap bm) {
+    private static InputStream Bitmap2InputStream(Bitmap bm) {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         bm.compress(Bitmap.CompressFormat.JPEG, 65, baos);
         InputStream is = new ByteArrayInputStream(baos.toByteArray());
         return is;
     }
 
-    // Drawable转换成Bitmap
-    public static Bitmap drawable2Bitmap(Drawable drawable) {
-        Bitmap bitmap = Bitmap.createBitmap(
-                drawable.getIntrinsicWidth(),
-                drawable.getIntrinsicHeight(),
-                drawable.getOpacity() != PixelFormat.OPAQUE ? Bitmap.Config.ARGB_8888 : Bitmap.Config.RGB_565);
-        Canvas canvas = new Canvas(bitmap);
-        drawable.setBounds(0, 0, drawable.getIntrinsicWidth(),
-                drawable.getIntrinsicHeight());
-        drawable.draw(canvas);
-        return bitmap;
-    }
 }
-

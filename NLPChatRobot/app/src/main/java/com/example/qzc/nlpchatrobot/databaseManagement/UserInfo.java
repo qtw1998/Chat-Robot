@@ -1,4 +1,4 @@
-package com.example.qzc.nlpchatrobot;
+package com.example.qzc.nlpchatrobot.databaseManagement;
 
 import org.litepal.annotation.Column;
 import org.litepal.crud.LitePalSupport;

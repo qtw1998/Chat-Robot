@@ -3,7 +3,6 @@ package com.example.qzc.nlpchatrobot;
 import android.app.ProgressDialog;
 import android.content.ContentUris;
 import android.content.Intent;
-import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.graphics.Bitmap;
@@ -31,7 +30,6 @@ import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
 import android.util.Base64;
-import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -43,34 +41,22 @@ import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.Toast;
 
-
-import com.example.qzc.nlpchatrobot.iatvoice.IatVoiceToText;
-import com.iflytek.cloud.RecognizerResult;
-import com.iflytek.cloud.SpeechConstant;
-import com.iflytek.cloud.SpeechError;
-import com.iflytek.cloud.SpeechUtility;
-import com.iflytek.cloud.ui.RecognizerDialog;
-import com.iflytek.cloud.ui.RecognizerDialogListener;
-
-import org.json.JSONArray;
-import org.json.JSONObject;
-import org.json.JSONTokener;
+import com.example.qzc.nlpchatrobot.databaseManagement.ChatRecord;
+import com.example.qzc.nlpchatrobot.databaseManagement.DatabaseManagement;
+import com.example.qzc.nlpchatrobot.databaseManagement.Msg;
+import com.example.qzc.nlpchatrobot.network.NetWorkUtils;
+import com.example.qzc.nlpchatrobot.network.NetworkBroadcastManagement;
+import com.example.qzc.nlpchatrobot.voice_process.IatProcessVoiceToText;
 import org.litepal.LitePal;
 import org.litepal.tablemanager.Connector;
 import java.io.ByteArrayOutputStream;
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.net.PasswordAuthentication;
-import java.net.Socket;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
-import de.hdodenhof.circleimageview.CircleImageView;
+
 import site.gemus.openingstartanimation.OpeningStartAnimation;
 
 
@@ -88,16 +74,24 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
     private int latestRecordId;
     private int robotType = Msg.ROBOT_1;
     private DrawerLayout mDrawerLayout;
-    private NetworkChangeReceiver networkChangeReceiver;
+
+    //这个类用于监听网络状态
+    private NetworkBroadcastManagement networkBM = new NetworkBroadcastManagement(this);
+    //这个类用于科大讯飞语音处理的调用及相关图形界面
+    private IatProcessVoiceToText mIatProcessVoiceToText;
+    //这个类用于发送http请求，上传文字，图片
+    private NetWorkUtils netWorkUtils = new NetWorkUtils();
+    //这个类用于写入、获取本地数据库中的信息
+    private DatabaseManagement dbManage = new DatabaseManagement();
 
     public static final int REQUEST_TAKE_PHOTO = 1001;
     public static final int REQUEST_SELECT_SENT_PHOTO = 1002;
     public static final int REQUEST_SELECT_BACKGROUND_PHOTO = 1003;
     private static final int PERMISSION_REQUEST = 2000;
     public static final String KEY_CHAT_BACKGROUND = "keyChatBackground";
-    private IatVoiceToText mIatVoiceToText;
 
-    private NetWorkUtils netWorkUtils = new NetWorkUtils();
+
+
     private final String requestUrl = "http://192.168.43.104:5050";
 
 
@@ -105,90 +99,93 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        //connect to the local database
+        //连接到本地数据库
         Connector.getDatabase();
-        //read the latest chat record message ID
-        readLatestRecordId();
 
-        // set the network status receiver
-        IntentFilter intentFilter = new IntentFilter();
-        intentFilter.addAction("android.net.conn.CONNECTIVITY_CHANGE");
-        networkChangeReceiver = new NetworkChangeReceiver();
-        registerReceiver(networkChangeReceiver, intentFilter);
+        //读取数据库中最后一条消息记录的ID便于读取本地消息历史记录
+        latestRecordId = dbManage.readLatestChatRecordID();
 
+        //注册网络状态监听器
+        networkBM.registerReceiver();
+
+        //图形界面初始化
         initView();
 
+        //获取用户权限
         getPermissions();
 
-        // Iat voice to text
-        mIatVoiceToText = new IatVoiceToText(ChatActivity.this, inputEditText);
-        mIatVoiceToText.initParams();
+        //初始化科大讯飞语音转换窗口参数，但不显示
+        mIatProcessVoiceToText = new IatProcessVoiceToText(this, inputEditText);
+        mIatProcessVoiceToText.initListenerDialog();
     }
 
 
     private void initView(){
-        //add by able for soft keyboard show
+        //使用键盘时隐藏标题栏
         requestWindowFeature(Window.FEATURE_NO_TITLE);
-        //end by able to avoid the distortion of background image
+        //使用键盘时，整体界面向上滑动，避免背景图片缩放
         getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_PAN);
-
-
+        //设置框架布局文件
         setContentView(R.layout.activity_chat);
 
+        //通过使用ActionBar美化标题栏
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
-
-
-        mDrawerLayout = (DrawerLayout) findViewById(R.id.drawer_layout);
-
         ActionBar actionBar = getSupportActionBar();
         if(actionBar != null){
             actionBar.setDisplayHomeAsUpEnabled(true);
             actionBar.setHomeAsUpIndicator(R.drawable.drawer_menu);
         }
 
-        //uncomment the following to show the opening animation
-        //setOpeningAnimation();
+        //以下语句用于显示打开APP时的动画效果
+        setOpeningAnimation();
 
+        //获取左侧划出窗体的实例
+        mDrawerLayout = (DrawerLayout) findViewById(R.id.drawer_layout);
 
+        //发送消息的Button，绑定listener
         Button sendButton = (Button) findViewById(R.id.sendButton);
         sendButton.setOnClickListener(this);
+
+        //调用科大讯飞语音输入窗口的Button,绑定listener
         ImageButton microButton = (ImageButton) findViewById(R.id.microButton);
         microButton.setOnClickListener(this);
 
+        //发送消息的文字框
         inputEditText = (EditText) findViewById(R.id.input_edit_text);
 
         msgRecyclerView = (RecyclerView) findViewById(R.id.msg_recycler_view);
         LinearLayoutManager layoutManager = new LinearLayoutManager(this);
         msgRecyclerView.setLayoutManager(layoutManager);
-
         adapter = new MsgAdapter(msgList);
         msgRecyclerView.setAdapter(adapter);
 
-        //swipeRefreshLayout is used to load the chat records
+        //swipeRefreshLayout只包装了recyclerView便于监听它的滑动情况，下拉使返回历史消息记录
         swipeRefreshLayout = (SwipeRefreshLayout) findViewById(R.id.swipe_refresh_layout);
         swipeRefreshLayout.setColorSchemeResources(R.color.colorPrimary);
         swipeRefreshLayout.setOnRefreshListener(this);
 
-        //navigationView is the drawer layout starting from the left side of the screen
+        //navigationView是左侧划出的drawerLayout，包含menu和header部分
         NavigationView navView = (NavigationView) findViewById(R.id.nav_view);
+        //navigationView只能监听menu部分的点击事件
         navView.setNavigationItemSelectedListener(this);
 
-        //load the chat background
-        List<UserInfo> userBackground = LitePal.where("key = ?", KEY_CHAT_BACKGROUND).find(UserInfo.class);
-        if (!userBackground.isEmpty()){ setUserChatBackground(userBackground.get(0).getInfo()); }
+        //从本地数据库中加载用户的聊天背景
+        String userBackgroundPath = dbManage.readUserInfo(KEY_CHAT_BACKGROUND);
+        setUserChatBackground(userBackgroundPath);
     }
 
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        unregisterReceiver(networkChangeReceiver);
+        //注销网络状态监听器
+        networkBM.unregisterReceiver();
     }
 
 
     private void getPermissions() {
-        //get the permissions
+        //获取用户权限，弹出对话框
         final String[] permissions = {"android.permission.RECORD_AUDIO", "android.permission.READ_PHONE_STATE",
                 "android.permission.WRITE_EXTERNAL_STORAGE",  "android.permission.CAMERA"};
         boolean requestOrNot = false;
@@ -213,8 +210,8 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
                     if(result != PackageManager.PERMISSION_GRANTED){showWarnInfo = true;}
                 }
                 if (showWarnInfo){
-                    // Permission Denied
-                    Toast.makeText(ChatActivity.this, "Required permissions denied.\nPlease check it manually.",
+                    //用户拒绝授予权限，提示一下
+                    Toast.makeText(this, "Required Permissions Denied.",
                             Toast.LENGTH_LONG).show();
                 }
                 break;
@@ -222,6 +219,7 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
                 break;
         }
     }
+
 
     @Override
     public void onClick(View v) {
@@ -232,14 +230,14 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
                     Msg msg = new Msg(content, Msg.TYPE_SENT, latestRecordId, robotType);
                     updateChatView(msg);
                     inputEditText.setText("");
-                    //codes about using neutral network API
+                    //调用神经网络
 
                     autoRepeater(msg.getContent());
                 }
                 break;
             case R.id.microButton:
-                //Iat: voice to text
-                mIatVoiceToText.startListening();
+                //科大讯飞语音转换
+                mIatProcessVoiceToText.startListeningAndShowResult();
                 break;
             default:
                 break;
@@ -255,22 +253,16 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
 
     @Override
     public boolean onNavigationItemSelected(@NonNull MenuItem menuItem) {
-        // for the items in the navigation view
+        //navigationView中的menu里的item被选中时
         switch (menuItem.getItemId()){
             case R.id.robot_1:
-                Toast.makeText(ChatActivity.this, "Switch to Robot 1", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "Switch to Robot 1", Toast.LENGTH_SHORT).show();
                 robotType = Msg.ROBOT_1;
-                //codes about using neutral network API 1
-
-
                 mDrawerLayout.closeDrawers();
                 break;
             case R.id.robot_2:
-                Toast.makeText(ChatActivity.this, "Switch to Robot 2", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "Switch to Robot 2", Toast.LENGTH_SHORT).show();
                 robotType = Msg.ROBOT_2;
-                //codes about using neutral network API 2
-
-
                 mDrawerLayout.closeDrawers();
                 break;
             case R.id.camera:
@@ -352,7 +344,8 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
                 if (resultCode == RESULT_OK){
                     String imgPath = handleImageGetPathOnKitKat(data);
                     setUserChatBackground(imgPath);
-                    saveUserInfo(KEY_CHAT_BACKGROUND, imgPath);
+                    //从数据库中获取用户聊天背景图片地址
+                    dbManage.saveUserInfo(KEY_CHAT_BACKGROUND, imgPath);
                 }
                 break;
             default:
@@ -434,7 +427,7 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
             linearLayout.setBackground(drawable);
         }
         else{
-            Toast.makeText(ChatActivity.this,"Failed to load the image.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this,"Failed to load the image.\nImage may be deleted.", Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -446,7 +439,8 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
         adapter.notifyItemChanged(msgList.size()-1);
         //scroll to the latest sent message
         msgRecyclerView.scrollToPosition(msgList.size()-1);
-        saveChatRecords(msg);
+        dbManage.saveChatRecords(msg);
+        latestRecordId = latestRecordId + 1;
 
     }
 
@@ -463,52 +457,13 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
                 adapter.notifyItemChanged(msgList.size()-1);
                 //scroll to the latest sent message
                 msgRecyclerView.scrollToPosition(msgList.size()-1);
-                saveChatRecords(msg);
+                dbManage.saveChatRecords(msg);
+                latestRecordId = latestRecordId + 1;
             }
         }, 1000);
     }
 
 
-    private void saveChatRecords(Msg msg){
-        //save the chat records into the local database
-        ChatRecord record = new ChatRecord();
-        record.setId(msg.getId());
-        record.setMessage(msg.getContent());
-        record.setType(msg.getType());
-        record.setRobotType(msg.getRobotType());
-        record.save();
-        latestRecordId = latestRecordId + 1;
-    }
-
-
-    private void saveUserInfo(String key, String info){
-        //update or save the user info (icon, picture etc.) into the local database
-        List<UserInfo> userInfos = LitePal.where("key = ?", key).find(UserInfo.class);
-        if (userInfos.isEmpty()){
-            UserInfo userInfo = new UserInfo();
-            userInfo.setKey(key);
-            userInfo.setInfo(info);
-            userInfo.save();
-        }
-        else{
-            UserInfo userinfo = userInfos.get(0);
-            userinfo.setInfo(info);
-            userinfo.save();
-        }
-
-    }
-
-
-    private void readLatestRecordId(){
-        //find the latest record id in the local database
-        ChatRecord latestRecord = LitePal.findLast(ChatRecord.class);
-        if (latestRecord == null){
-            latestRecordId = 1;
-        }
-        else{
-            latestRecordId = latestRecord.getId() + 1;
-        }
-    }
 
 
     private void readChatRecords(){
@@ -547,7 +502,7 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
-        // use to create the toolbar menu
+        // 用于创建 toolbar menu
         getMenuInflater().inflate(R.menu.toolbar, menu);
         return super.onCreateOptionsMenu(menu);
     }
@@ -555,13 +510,13 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        // use to listen to the item in the toolbar menu
+        // 用于监听 toolbar menu中的items是否被选中
         switch (item.getItemId()){
             case android.R.id.home:
                 mDrawerLayout.openDrawer(GravityCompat.START);
                 break;
             case R.id.contact_us:
-                Toast.makeText(ChatActivity.this, "Contact Us", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "Contact Us", Toast.LENGTH_SHORT).show();
                 //codes about contacting to the author
 
                 break;
@@ -639,7 +594,7 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
         @Override
         protected void onProgressUpdate(Void... values) {
             //work in UI thread
-            progressDialog.setMessage("Processing ......");
+            progressDialog.setMessage("On processing");
         }
 
 

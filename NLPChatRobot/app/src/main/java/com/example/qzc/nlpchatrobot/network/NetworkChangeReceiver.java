@@ -1,4 +1,4 @@
-package com.example.qzc.nlpchatrobot;
+package com.example.qzc.nlpchatrobot.network;
 
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -8,7 +8,7 @@ import android.net.NetworkInfo;
 import android.widget.Toast;
 
 public class NetworkChangeReceiver extends BroadcastReceiver {
-    //This class is used to show the network connection status
+    //这个类用于显示用户网络状态
     @Override
     public void onReceive(Context context, Intent intent) {
         ConnectivityManager connectivityManager = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);

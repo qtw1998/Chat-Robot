@@ -1,4 +1,4 @@
-package com.example.qzc.nlpchatrobot;
+package com.example.qzc.nlpchatrobot.databaseManagement;
 
 public class Msg {
 

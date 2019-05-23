@@ -1,4 +1,4 @@
-package com.example.qzc.nlpchatrobot.databaseManagement;
+package com.example.qzc.nlpchatrobot.database_management;
 
 public interface UserInfoManagement {
     void saveUserInfo(String key, String info);

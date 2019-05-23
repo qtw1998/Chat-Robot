@@ -41,13 +41,12 @@ import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.Toast;
 
-import com.example.qzc.nlpchatrobot.databaseManagement.ChatRecord;
-import com.example.qzc.nlpchatrobot.databaseManagement.DatabaseManagement;
-import com.example.qzc.nlpchatrobot.databaseManagement.Msg;
+import com.example.qzc.nlpchatrobot.database_management.DatabaseManagement;
+import com.example.qzc.nlpchatrobot.database_management.Msg;
 import com.example.qzc.nlpchatrobot.network.NetWorkUtils;
 import com.example.qzc.nlpchatrobot.network.NetworkBroadcastManagement;
 import com.example.qzc.nlpchatrobot.voice_process.IatProcessVoiceToText;
-import org.litepal.LitePal;
+
 import org.litepal.tablemanager.Connector;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -67,10 +66,12 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
 
 
     private EditText inputEditText;
+
     private RecyclerView msgRecyclerView;
     private MsgAdapter adapter;
     private SwipeRefreshLayout swipeRefreshLayout;
     private List<Msg> msgList = new ArrayList<>();
+
     private int latestRecordId;
     private int robotType = Msg.ROBOT_1;
     private DrawerLayout mDrawerLayout;
@@ -89,7 +90,6 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
     public static final int REQUEST_SELECT_BACKGROUND_PHOTO = 1003;
     private static final int PERMISSION_REQUEST = 2000;
     public static final String KEY_CHAT_BACKGROUND = "keyChatBackground";
-
 
 
     private final String requestUrl = "http://192.168.43.104:5050";
@@ -203,6 +203,7 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        //根据获取权限的request值，进行相应操作
         switch (requestCode){
             case PERMISSION_REQUEST:
                 boolean showWarnInfo = false;
@@ -228,10 +229,9 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
                 String content = inputEditText.getText().toString();
                 if(!"".equals(content)){
                     Msg msg = new Msg(content, Msg.TYPE_SENT, latestRecordId, robotType);
-                    updateChatView(msg);
+                    updateOneChatMsg(msg);
                     inputEditText.setText("");
                     //调用神经网络
-
                     autoRepeater(msg.getContent());
                 }
                 break;
@@ -246,7 +246,8 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
 
     @Override
     public void onRefresh() {
-        readChatRecords();
+        //readChatRecords();
+        notifyChatRecordsUpdate();
         swipeRefreshLayout.setRefreshing(false);
     }
 
@@ -397,14 +398,13 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
         if (imagePath != null){
             Msg msg = new Msg(imagePath, Msg.TYPE_PHOTO, latestRecordId, robotType);
             // update and save the image chat record
-            updateChatView(msg);
+            updateOneChatMsg(msg);
             autoRepeater(msg.getContent());
             //crop and compress the image if needed, then send it
             processChatImage(imagePath);
-
         }
         else{
-            Toast.makeText(ChatActivity.this,"Fail to load the image.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this,"Fail to load the image.", Toast.LENGTH_SHORT).show();
         }
 
     }
@@ -432,7 +432,7 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
     }
 
 
-    private void updateChatView(Msg msg){
+    private void updateOneChatMsg(Msg msg){
         // update and save the chat record
         msgList.add(msg);
         //show the latest sent message
@@ -465,38 +465,22 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
 
 
 
-
-    private void readChatRecords(){
-        //Load chat records from the local database
-        try{
-            int latestToLoadMsgId = 0;
-            if (msgList.isEmpty()) {
-                ChatRecord lastChatRecord = LitePal.findLast(ChatRecord.class);
-                if (null == lastChatRecord){
-                    Toast.makeText(this, "No More Chat Records", Toast.LENGTH_SHORT).show();
-                }
-                else{ latestToLoadMsgId = lastChatRecord.getId(); }
-            }
-            else{ latestToLoadMsgId = msgList.get(0).getId() - 1; }
-
-
-            if (latestToLoadMsgId <= 0){
-                Toast.makeText(this, "No More Chat Records", Toast.LENGTH_SHORT).show();
-            }
-            else{
-                // load 10 pieces of messages at one time
-                for (int id=latestToLoadMsgId; id>(latestToLoadMsgId-10) && id>0; id--){
-                    ChatRecord chatRecord = LitePal.find(ChatRecord.class, id);
-                    Msg recordMsg = new Msg(chatRecord.getMessage(), chatRecord.getType(), chatRecord.getId(), chatRecord.getRobotType());
-                    msgList.add(0, recordMsg);
-                    adapter.notifyItemInserted(0);
-                }
-            }
+    private void notifyChatRecordsUpdate(){
+        //将从数据库中读取的消息记录列表加载到recyclerView的最前端，实现加载历史记录的功能
+        List<Msg> msgs;
+        if(msgList.isEmpty()){
+            msgs = dbManage.readChatRecords();
         }
-        catch (Exception e){
-            e.printStackTrace();
+        else {
+            msgs = dbManage.readChatRecords(msgList.get(0).getId()-1);
         }
-
+        if(msgs == null){
+            Toast.makeText(this, "No More Chat Records", Toast.LENGTH_SHORT).show();
+        }
+        else {
+            msgList.addAll(0, msgs);
+            adapter.notifyItemRangeInserted(0, msgs.size());
+        }
     }
 
 
@@ -566,6 +550,7 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
             //compress the image with a quality 1-100 to decrease the storage space
             int quality = Integer.parseInt(strings[2]);
             try{
+                //对图片压缩同时写入文件流
                 if (imageFile.exists()) {imageFile.delete();}
                 imageFile.createNewFile();
                 FileOutputStream fileOutputStream = new FileOutputStream(imageFile);
@@ -614,7 +599,7 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     private Bitmap cropBitmapImage(double ratio, Bitmap originalBitmap){
-
+        //根据比例中心裁剪Bitmap格式的图片
         Bitmap croppedBitmap;
         if (ratio > 0 && ratio < 1){
             int croppedWidth = (int) (ratio*originalBitmap.getWidth());
@@ -629,8 +614,8 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
         return croppedBitmap;
     }
 
-
     private String getImageBase64Str(Bitmap bitmap){
+        //将Bitmap格式的图片转为Base64编码字符串返回，并将字符串临时储存于一个文本文件，本函数暂未用到
         String imageBase64Str;
         try{
             ByteArrayOutputStream byteAOS = new ByteArrayOutputStream();

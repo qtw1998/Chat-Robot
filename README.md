@@ -38,3 +38,6 @@ Modify the required permissions.
 
  **2019.05.10** 
 Realize the function of sending images to the server and fetching the captions of the images.
+
+ **2019.05.22** 
+Refactor the code structure.

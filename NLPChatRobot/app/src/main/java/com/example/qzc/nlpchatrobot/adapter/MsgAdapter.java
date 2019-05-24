@@ -1,4 +1,4 @@
-package com.example.qzc.nlpchatrobot;
+package com.example.qzc.nlpchatrobot.adapter;
 
 
 import android.graphics.BitmapFactory;
@@ -11,6 +11,7 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import com.example.qzc.nlpchatrobot.R;
 import com.example.qzc.nlpchatrobot.database_management.Msg;
 
 import java.util.List;

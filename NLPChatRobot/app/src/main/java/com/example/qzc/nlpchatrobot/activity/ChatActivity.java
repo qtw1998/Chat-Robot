@@ -1,4 +1,4 @@
-package com.example.qzc.nlpchatrobot;
+package com.example.qzc.nlpchatrobot.activity;
 
 import android.app.ProgressDialog;
 import android.content.ContentUris;
@@ -41,6 +41,8 @@ import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.Toast;
 
+import com.example.qzc.nlpchatrobot.adapter.MsgAdapter;
+import com.example.qzc.nlpchatrobot.R;
 import com.example.qzc.nlpchatrobot.database_management.DatabaseManagement;
 import com.example.qzc.nlpchatrobot.database_management.Msg;
 import com.example.qzc.nlpchatrobot.network.NetWorkUtils;

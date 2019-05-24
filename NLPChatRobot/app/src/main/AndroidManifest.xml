@@ -36,7 +36,7 @@
         android:roundIcon="@drawable/conversation"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
-        <activity android:name=".ChatActivity">
+        <activity android:name=".activity.ChatActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

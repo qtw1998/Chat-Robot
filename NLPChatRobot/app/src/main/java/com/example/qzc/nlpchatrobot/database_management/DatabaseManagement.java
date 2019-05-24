@@ -6,7 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 
-public class DatabaseManagement implements UserInfoManagement, ChatRecordManagement {
+public class DatabaseManagement implements UserInfoManagementInterface, ChatRecordManagementInterface {
 
     @Override
     public void saveUserInfo(String key, String info) {

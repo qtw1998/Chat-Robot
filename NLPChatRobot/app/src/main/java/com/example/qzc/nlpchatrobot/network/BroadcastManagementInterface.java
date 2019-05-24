@@ -1,7 +1,7 @@
 package com.example.qzc.nlpchatrobot.network;
 import android.content.Context;
 
-public interface BroadcastManagement {
+public interface BroadcastManagementInterface {
     void registerReceiver();
     void unregisterReceiver();
 }

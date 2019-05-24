@@ -38,7 +38,7 @@ public class IatProcessVoiceToText implements VoiceToText {
         //科大讯飞初始化
         SpeechUtility.createUtility(mContext, SpeechConstant.APPID +"=5cb97b62");
         //初始化语音监听器
-        RecognizerDialogListener mRListener = new RecognizerDialogListener() {
+        RecognizerDialogListener mRListener = new RecognizerDialogListener()  {
             @Override
             public void onResult(RecognizerResult results, boolean isLast) {
                 //这个函数在一次语音识别中会被多次调用

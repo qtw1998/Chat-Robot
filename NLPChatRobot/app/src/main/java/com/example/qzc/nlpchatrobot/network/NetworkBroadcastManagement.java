@@ -3,7 +3,7 @@ package com.example.qzc.nlpchatrobot.network;
 import android.content.Context;
 import android.content.IntentFilter;
 
-public class NetworkBroadcastManagement implements BroadcastManagement {
+public class NetworkBroadcastManagement implements BroadcastManagementInterface {
 
     private Context mContext;
     private NetworkChangeReceiver networkChangeReceiver = new NetworkChangeReceiver();

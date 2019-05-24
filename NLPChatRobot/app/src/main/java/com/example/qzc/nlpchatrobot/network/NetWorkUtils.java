@@ -1,9 +1,6 @@
 package com.example.qzc.nlpchatrobot.network;
 
 import android.graphics.Bitmap;
-import android.graphics.Canvas;
-import android.graphics.PixelFormat;
-import android.graphics.drawable.Drawable;
 import android.util.Log;
 
 import java.io.BufferedReader;
@@ -21,7 +18,7 @@ import java.util.UUID;
 
 
 
-public class NetWorkUtils implements NetworkRequest {
+public class NetWorkUtils implements NetworkRequestInterface {
 
     private static int TIME_OUT = 60 * 1000;   //设置超时时间
     private static String CHARSET = "utf-8"; //设置编码

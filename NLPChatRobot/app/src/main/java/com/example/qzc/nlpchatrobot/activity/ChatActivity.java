@@ -30,6 +30,7 @@ import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
 import android.util.Base64;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -63,7 +64,8 @@ import site.gemus.openingstartanimation.OpeningStartAnimation;
 
 
 
-public class ChatActivity extends AppCompatActivity implements View.OnClickListener, NavigationView.OnNavigationItemSelectedListener, SwipeRefreshLayout.OnRefreshListener {
+public class
+ChatActivity extends AppCompatActivity implements View.OnClickListener, NavigationView.OnNavigationItemSelectedListener, SwipeRefreshLayout.OnRefreshListener {
 
 
 
@@ -401,7 +403,9 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
             Msg msg = new Msg(imagePath, Msg.TYPE_PHOTO, latestRecordId, robotType);
             // update and save the image chat record
             updateOneChatMsg(msg);
-            autoRepeater(msg.getContent());
+            // test code for showing the image path
+            // autoRepeater(msg.getContent());
+
             //crop and compress the image if needed, then send it
             processChatImage(imagePath);
         }
@@ -569,6 +573,7 @@ public class ChatActivity extends AppCompatActivity implements View.OnClickListe
             //String imageBase64Str = getImageBase64Str(croppedBitmap);
 
             try{
+                Log.d("imageProcess", "It works well before sending the image.");
                 imageCaption = netWorkUtils.uploadFile(croppedBitmap, requestUrl,null, "firstImage.jpg");
             }catch (Exception e){
                 e.printStackTrace();

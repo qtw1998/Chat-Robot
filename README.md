@@ -41,3 +41,6 @@ Realize the function of sending images to the server and fetching the captions o
 
  **2019.05.22** 
 Refactor the code structure.
+
+ **2019.06.08** 
+Realize the function of sending and receiving the text message. The message sent can be replied by a neutral network model which is deployed on the PC server at present.

@@ -7,6 +7,7 @@ public class NetworkBroadcastManagement implements BroadcastManagementInterface 
 
     private Context mContext;
     private NetworkChangeReceiver networkChangeReceiver = new NetworkChangeReceiver();
+
     public NetworkBroadcastManagement(Context context){
         mContext = context;
     }

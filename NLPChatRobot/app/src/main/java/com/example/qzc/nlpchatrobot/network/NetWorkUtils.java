@@ -2,7 +2,6 @@ package com.example.qzc.nlpchatrobot.network;
 
 import android.graphics.Bitmap;
 import android.util.Log;
-
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;

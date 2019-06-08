@@ -56,18 +56,15 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 
 import site.gemus.openingstartanimation.OpeningStartAnimation;
 
-
-
-
 public class
 ChatActivity extends AppCompatActivity implements View.OnClickListener, NavigationView.OnNavigationItemSelectedListener, SwipeRefreshLayout.OnRefreshListener {
-
-
 
     private EditText inputEditText;
 
@@ -96,7 +93,9 @@ ChatActivity extends AppCompatActivity implements View.OnClickListener, Navigati
     public static final String KEY_CHAT_BACKGROUND = "keyChatBackground";
 
 
-    private final String requestUrl = "http://192.168.43.104:5050";
+    private final String requestImageUrl = "http://192.168.43.104:5050/image";
+    private final String requestMsgUrl = "http://192.168.43.104:5050/message";
+
 
 
     @Override
@@ -235,8 +234,9 @@ ChatActivity extends AppCompatActivity implements View.OnClickListener, Navigati
                     Msg msg = new Msg(content, Msg.TYPE_SENT, latestRecordId, robotType);
                     updateOneChatMsg(msg);
                     inputEditText.setText("");
-                    //调用神经网络
-                    autoRepeater(msg.getContent());
+                    //将文字消息发送至服务器，调用神经网络，接受返回值并显示
+                    new MsgProcessTask().execute(content);
+                    //autoRepeater(msg.getContent());
                 }
                 break;
             case R.id.microButton:
@@ -272,12 +272,15 @@ ChatActivity extends AppCompatActivity implements View.OnClickListener, Navigati
                 break;
             case R.id.camera:
                 openCamera();
+                mDrawerLayout.closeDrawers();
                 break;
             case R.id.gallery:
                 openAlbum(REQUEST_SELECT_SENT_PHOTO);
+                mDrawerLayout.closeDrawers();
                 break;
             case R.id.chat_background:
                 openAlbum(REQUEST_SELECT_BACKGROUND_PHOTO);
+                mDrawerLayout.closeDrawers();
                 break;
             default:
         }
@@ -408,6 +411,7 @@ ChatActivity extends AppCompatActivity implements View.OnClickListener, Navigati
 
             //crop and compress the image if needed, then send it
             processChatImage(imagePath);
+
         }
         else{
             Toast.makeText(this,"Fail to load the image.", Toast.LENGTH_SHORT).show();
@@ -574,7 +578,7 @@ ChatActivity extends AppCompatActivity implements View.OnClickListener, Navigati
 
             try{
                 Log.d("imageProcess", "It works well before sending the image.");
-                imageCaption = netWorkUtils.uploadFile(croppedBitmap, requestUrl,null, "firstImage.jpg");
+                imageCaption = netWorkUtils.uploadFile(croppedBitmap, requestImageUrl,null, "firstImage.jpg");
             }catch (Exception e){
                 e.printStackTrace();
                 return false;
@@ -647,6 +651,45 @@ ChatActivity extends AppCompatActivity implements View.OnClickListener, Navigati
         catch (Exception e){
             e.printStackTrace();
             return null;
+        }
+    }
+
+    private class MsgProcessTask extends AsyncTask<String, Void, Boolean> {
+        private ProgressDialog progressDialog = new ProgressDialog(ChatActivity.this);
+        private String answer;
+
+        @Override
+        protected void onPreExecute() {
+            progressDialog.show();
+        }
+
+        @Override
+        protected void onPostExecute(Boolean result) {
+            progressDialog.dismiss();
+            if (result)
+            {
+                autoRepeater(answer);
+            }
+        }
+
+        @Override
+        protected void onProgressUpdate(Void... values) {
+            progressDialog.setMessage("Waiting for the answer.");
+        }
+
+        @Override
+        protected Boolean doInBackground(String... strings) {
+            String msg_content = strings[0];
+            Map<String, String> map = new HashMap<>();
+            map.put("message", msg_content);
+            try{
+                Log.d("imageProcess", "It works well before sending the image.");
+                answer = netWorkUtils.doPost(requestMsgUrl, map);
+            }catch (Exception e){
+                e.printStackTrace();
+                return false;
+            }
+            return true;
         }
     }
 
